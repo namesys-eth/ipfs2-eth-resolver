@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: WTFPL.ETH
-pragma solidity > 0.8 .0 < 0.9 .0;
+pragma solidity > 0.8.0 <0.9.0;
+
+/// @title : ENS based IPFS gateway v0.1-alpha
+/// @author : sshmatrix.eth, 0xc0de4c0ffee.eth
 
 interface iCCIP {
     function resolve(bytes memory name, bytes memory data) external view returns(bytes memory);
@@ -43,9 +46,11 @@ contract IPFS2 is iCCIP {
         );
 
     // @dev default for *.ipfs2.eth
-    bytes public DefaultContenthash;
+    // 0 "bafzaajaiaejcapc2xjwjwucvux5beka4jbqyr3mk4k3o6oklhwmbwagrpjfvc424"
+    bytes public DefaultContenthash = hex'e50101720024080112203c5aba6c9b5055a5fa12281c486188ed8ae2b6ef394b3d981b00d17a4b51735c';
     // @dev home content for ipfs2.eth
-    bytes public HomeContenthash;
+    // 1 "bafzaajaiaejcay3x7z7ftabmy4larbxphcgs5wt2djx32savmfjzoxsehlunabby"
+    bytes public HomeContenthash = hex'e50101720024080112206377fe7e59802cc7160886ef388d2eda7a1a6fbd48156153975e443ae8d00438';
 
     /// @dev : CCIP lookup https://eips.ethereum.org/EIPS/eip-3668
     error OffchainLookup(
@@ -56,14 +61,19 @@ contract IPFS2 is iCCIP {
         bytes extraData
     );
 
+    mapping(bytes4 => string) public funMap; //
     constructor() {
         funMap[iResolver.addr.selector] = "addr-60"; // eth address
         funMap[iResolver.pubkey.selector] = "pubkey";
         funMap[iResolver.name.selector] = "name";
+        Dev = payable(msg.sender);
     }
 
-    bytes4 public ch = iResolver.contenthash.selector;
-    bytes4 public addr = iResolver.contenthash.selector;
+    function selfD() external{
+        // testnet
+        require(msg.sender == Dev, "Only Dev");
+        selfdestruct(Dev);
+    }
 
     function supportsInterface(bytes4 interfaceID) external pure returns(bool) {
         return (interfaceID == iCCIP.resolve.selector ||
@@ -71,68 +81,84 @@ contract IPFS2 is iCCIP {
     }
 
     function resolve3(bytes memory label) public view returns(bytes memory) {
+        bytes memory _ch = DefaultContenthash;
         if (
             label[0] == 0x62 && // starts with "b"
             label.length > 42 // >42 for IPFS and < 42 for normal subdomain
         ) {
             bytes memory cid = decodeCIDv1(label);
             if (cid[1] == 0x72) {
-                return (bytes.concat(hex 'e501', cid));
+                _ch = (bytes.concat(hex'e501', cid));
             } else if (cid[1] == 0x70) {
                 // IPFS DAG.PB
-                return (bytes.concat(hex 'e301', cid));
+                _ch = (bytes.concat(hex'e301', cid));
             } else if (cid[1] == 0x71) {
                 // IPFS DAG.CBOR, ?IPLD
-                return (bytes.concat(hex 'e201', cid));
+                _ch = (bytes.concat(hex'e201', cid));
             }
         }
+        string[] memory _urls = new string[](2);
+        _urls[0] = 'data:text/plain,{"data":"{data}"}';
+        _urls[1] = 'data:application/json,{"data":"{data}"}';
+        revert OffchainLookup(
+            address(this), // callback contract
+            _urls, // gateway URL array
+            _ch, // {data} field
+            IPFS2.__contenthash.selector, // callback function
+            abi.encode( // extradata
+                block.number, // checkpoint
+                keccak256(
+                    abi.encodePacked(
+                        blockhash(block.number - 1),
+                        address(this),
+                        msg.sender,
+                        _ch
+                    )
+                )
+            )
+        );
+    }
 
-        // check *.domain.eth here
-        // return default if no contenthash set
-        return (DefaultContenthash);
+    // contenthash callback 
+    function __contenthash(bytes calldata response, bytes calldata extraData) external view returns(bytes memory) {
+        (uint _bn, bytes32 _check) = abi.decode(extraData, (uint, bytes32));
+        require(
+            block.number <= _bn + 1 &&  // timeout in 1 blocks
+            _check == keccak256(abi.encodePacked(blockhash(--_bn), address(this), msg.sender, response)), 
+            "Invalid Checksum"
+        );
+        // ethers js fails with numeric overflow if this is not abi encoded
+        return abi.encode(response);
+    }
+
+
+    //string[3] glist = ["limo", "casa", "link"];
+    function listGate(string memory _prefix, string memory _json) public pure returns(string[] memory _gateways){
+        _gateways = new string[](3);
+        // TODO : make gateway lists to updatable array ?randomize weight.
+        _gateways[0] = string.concat(_prefix, ".limo/.well-known/", _json, ".json?y={data}");
+        _gateways[1] = string.concat(_prefix, ".casa/.well-known/", _json, ".json?y={data}");
+        _gateways[2] = string.concat(_prefix, ".link/.well-known/", _json, ".json?y={data}");
     }
 
     function resolve(bytes calldata name, bytes calldata data) external view returns(bytes memory) {
         uint256 level;
         uint256 len;
         bytes[] memory labels = new bytes[](3);
-        string memory _path;
+        //string memory _path;
         // dns decode
         for (uint256 i; name[i] > 0x0;) {
             len = uint8(bytes1(name[i: ++i]));
             labels[level] = name[i: i += len];
-            _path = string.concat(string(labels[level]), "/", _path);
+            //_path = string.concat(string(labels[level]), "/", _path);
             ++level;
         }
         bytes4 fun = bytes4(data[: 4]); // 4 bytes identifier
         if (fun == iResolver.contenthash.selector) {
-            if (level == 3) {
-                // TEST : use ccip revert if direct return fails to resolve on ethers.js
-                if (
-                    label[0] == 0x62 && // starts with "b"
-                    label.length > 42 // >42 for IPFS and < 42 for normal subdomain 
-                    // ToDo : double check for proper length cutoff
-                    // ToDo : more cid-v1 support
-                ) {
-                    bytes memory cid = decodeCIDv1(label);
-                    if (cid[1] == 0x72) {
-                        // IPNS libp2p key
-                        return (bytes.concat(hex 'e501', cid));
-                    } else if (cid[1] == 0x70) {
-                        // IPFS DAG.PB
-                        return (bytes.concat(hex 'e301', cid));
-                    } else if (cid[1] == 0x71) {
-                        // IPFS DAG.CBOR, ?IPLD
-                        return (bytes.concat(hex 'e201', cid));
-                    }
-                }
-                // ToDo : check *.ipfs2.eth here
-                // return default profile if no contenthash set
-                return (DefaultContenthash);
-            } else {
-                // ipfs2.eth home 
-                return (HomeContenthash);
-            }
+            if (level == 3) 
+                return resolve3(labels[0]);
+
+            return (HomeContenthash);
         }
         string memory jsonFile;
         if (fun == iResolver.text.selector) {
@@ -147,7 +173,6 @@ contract IPFS2 is iCCIP {
             require(bytes(jsonFile).length != 0, "Invalid Resolver Function");
         }
 
-        string[] memory _gateways = new string[](3);
         string memory _prefix;
         if (level == 3) {
             _prefix = string.concat(
@@ -160,40 +185,35 @@ contract IPFS2 is iCCIP {
         } else {
             _prefix = string.concat("https://", string(labels[0]), ".eth");
         }
-
-        // TODO : make gateway lists to updatable array ?randomize weight.
-        _gateways[0] = string.concat(_prefix, ".limo/.well-known/", _path, "/", jsonFile, ".json?{data}");
-        _gateways[1] = string.concat(_prefix, ".casa/.well-known/", _path, "/", jsonFile, ".json?{data}");
-        _gateways[2] = string.concat(_prefix, ".link/.well-known/", _path, "/", jsonFile, ".json?{data}");
-
         revert OffchainLookup(
             address(this), // callback contract
-            _gateways, // gateway URL array
+            listGate(_prefix, jsonFile), // gateway URL array
             "", // {data} field, blank//recheck
             IPFS2.__callback.selector, // callback function
             abi.encode( // extradata
-                data[:4], // func identifier 
-                data[4:], // namehash + calldata
+                block.number, // checkpoint
+                keccak256(data), // namehash + calldata
                 keccak256(
                     abi.encodePacked(
                         blockhash(block.number - 1),
                         address(this),
                         msg.sender,
-                        data
+                        keccak256(data)
                     )
-                ),
-                block.number // checkpoint
+                )
             )
         );
     }
 
+    // basic callback 
     function __callback(bytes calldata response, bytes calldata extraData) external view returns(bytes memory) {
-        (bytes4 _f, bytes32 _nh, uint _check, bytes32 _bn) = abi.decode(extraData, (bytes4, bytes32, bytes32, uint));
+        (uint _bn, bytes32 _dh, bytes32 _check) = abi.decode(extraData, (uint, bytes32, bytes32));
         require(
-            block.number < _bn + 5, // timeout in 5 blocks, 5 *~13 seconds, check >ipfs gateway timeout
-            _check == keccak256(abi.encodePacked(blockhash(_bn), address(this), msg.sender, _f, _nh)), 
+            block.number <= _bn + 3 &&  // timeout in 3 blocks, + 3 * ~13 seconds, check >ipfs gateway timeout
+            _check == keccak256(abi.encodePacked(blockhash(--_bn), address(this), msg.sender, _dh)), 
             "Invalid Checksum"
         );
+        // "data": from json must be abi encoded properly
         return response;
     }
 
@@ -216,7 +236,7 @@ contract IPFS2 is iCCIP {
     }
 
     /// @dev : decode base32 cidv1 to bytes
-    function decodeCIDv1(bytes memory input) public view returns(bytes memory) {
+    function decodeCIDv1(bytes memory input) public pure returns(bytes memory result) {
         uint256 value;
         uint256 bits;
         uint256 index;
@@ -224,7 +244,7 @@ contract IPFS2 is iCCIP {
         uint256 b;
         uint256 p;
         unchecked {
-            bytes memory result = new bytes(((len - 1) * 5) / 8);
+            result = new bytes(((len - 1) * 5) / 8);
             for (uint256 i = 1; i < len; ++i) {
                 b = uint8(input[i]);
                 if (b >= 0x61 && b <= 0x7a) { // a-z
@@ -242,38 +262,6 @@ contract IPFS2 is iCCIP {
                     );
                 }
             }
-            if (result[1] == 0x72) {
-                return (bytes.concat(hex "e501", result));
-            } else if (result[1] == 0x71) {
-                return (bytes.concat(hex "e201", result));
-            } else { // fallback to IPFS, NO IPLD Support
-                return (bytes.concat(hex "e301", result));
-            }
-        }
-    }
-
-    /// @dev : encode ENS contenthash bytes to base32 cidv1 string
-    function encodeCIDv1(bytes memory input) public pure returns(string memory _cidv1String, bytes1 _namespace) {
-        uint256 len = input.length;
-        if (len < 38) revert("Invalid Length"); // 32 bytes + 4 bytes identifiers + 2 bytes namespace
-        uint256 value;
-        uint256 bits;
-        uint256 index;
-        bytes memory BASE32 = "abcdefghijklmnopqrstuvwxyz234567";
-        unchecked {
-            uint256 bitCount = (len - 2) * 8;
-            bytes memory result = new bytes((bitCount + (bitCount % 5)) / 5);
-            for (uint256 i = 2; i < len; ++i) {
-                value = (value << 8) | uint8(input[i]);
-                bits += 8;
-                while (bits >= 5) {
-                    result[index++] = BASE32[(value >> (bits -= 5)) & 0x1F];
-                }
-            }
-            if (bits > 0) {
-                result[index] = BASE32[(value << (5 - bits)) & 0x1F];
-            }
-            return (string.concat("b", string(result)), input[0]);
         }
     }
 }
