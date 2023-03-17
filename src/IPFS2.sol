@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: WTFPL.ETH
 pragma solidity > 0.8.0 <0.9.0;
 
-/// @title : ENS based IPFS gateway v0.1-alpha
-/// @author : sshmatrix.eth, 0xc0de4c0ffee.eth
+/// @title : ENS-based IPFS Gateway v0.1-alpha
+/// @author : 0xc0de4c0ffee.eth, sshmatrix.eth
 
 interface iCCIP {
     function resolve(bytes memory name, bytes memory data) external view returns(bytes memory);
