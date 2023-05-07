@@ -1,21 +1,9 @@
-# Compiler files
 cache/
-# Ignores development broadcast logs
-!/broadcast
-/broadcast/*/31337/
-/broadcast/**/dry-run/
-
-# Docs
+lib/
 docs/
-
-# Dotenv file
 .env
-
 */.DS_store
 .DS_store
-
 broadcast/*/*/*
 !broadcast/*/*/run-latest.json
-
-out/*/*
-!out/IPFS2.sol/*
+out/

@@ -1,8 +1,27 @@
-# IPFS2: Web3 IPFS Gateway
+# `IPFS2.ETH`
+
+## [Install Foundry](https://getfoundry.sh/)
+`curl -L https://foundry.paradigm.xyz | bash && source ~/.bashrc && foundryup`
+
+## Install dependency
+`forge install foundry-rs/forge-std --no-commit --no-git`
+
+## Goerli Testnet
+ `forge test --fork-url https://rpc.ankr.com/eth_goerli -vvvv --fork-block-number 8897000`
+
+# Specification 
+
+## IPFS2.ETH : Standalone ENS Resolver as Web3 IPFS Gateway
 #### Authors: `sshmatrix`, `0xc0de4c0ffee`
 ###### tags: `specification` `resolver` `contenthash` `ccip` `ens`
 
-IPFS2 is a proof-of-concept IPFS gateway using an ENS CCIP Resolver wrapped in a `base32` decoder, capable of resolving IPFS and IPNS (and IPLD) contenthashes as subdomains `*.IPFS2.eth` when queried via a URL. `IPFS2.eth` is a dual implementation of CCIP-Read 'Off-chain Lookup', in which the Resolver contract is capable of fulfilling two queries simultaneously,
+IPFS2.eth ("IPFS To ETH") is a proof-of-concept IPFS gateway `like` design using an ENS CCIP-read Resolver wrapped in a `base32`and `base36` decoder, it's capable of resolving IPFS and IPNS (and IPLD) contenthashes as subdomains `*.ipfs2.eth` when queried as ENS subdomain or from public ENS gateways services like `*.IPFS2.eth.limo`  
+
+> IPFS : https://bafybeiftyo7xm6ktvsmijtwyzcqavotjybnmsiqfxx3fawxvpr666r6z64.ipfs2.eth.limo 
+> IPNS : https://k51qzi5uqu5dkgt2xdmfcyh6058cl8fa6tfnj06u6vdf510260imor3yak48fv.ipfs2.eth.limo
+> IPLD : https://bafyreie2nochynilsdmcyqpxid7d2dzdle4dbptvep65kujtg2uywm7jre.ipfs2.eth.limo
+
+---
 
 - to fetch the ENS contenthash as the parent domain's subdomain, and
 - to fetch the RFC-8615 compliant ENS records stored at that contenthash, if requested.
@@ -47,13 +66,12 @@ https://<hash>.ipfs2.eth.*/.well-known/<data>.json
 }
 ```
 
-#### JS Minimal Implementation
+#### Using Ethers JS, resolver contract converts ipfs/ipns hash subdomain as contenthash  
 
 ```js
-infura = new ethers.providers.InfuraProvider("goerli", SECRET_API_KEY);
-// vitalik.eth's contenthash for testing: bafybeiftyo7xm6ktvsmijtwyzcqavotjybnmsiqfxx3fawxvpr666r6z64
-const resolver = await infura.getResolver("bafybeiftyo7xm6ktvsmijtwyzcqavotjybnmsiqfxx3fawxvpr666r6z64.ipfs2.eth");
-const contenthash = await resolver.getContentHash();
+let wallet = new BrowserProvider(window.ethereum);
+const resolver = await wallet.getResolver("bafybeiftyo7xm6ktvsmijtwyzcqavotjybnmsiqfxx3fawxvpr666r6z64.ipfs2.eth");
+let contenthash = await resolver.getContentHash();
 console.log(contenthash);
 ```
 

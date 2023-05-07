@@ -3,265 +3,303 @@ pragma solidity > 0.8.0 <0.9.0;
 
 /// @title : ENS-based IPFS Gateway v0.1-alpha
 /// @author : 0xc0de4c0ffee.eth, sshmatrix.eth
+// SPDX-License-Identifier: WTFPL.ETH
+pragma solidity >0.8.0 <0.9.0;
 
-interface iCCIP {
-    function resolve(bytes memory name, bytes memory data) external view returns(bytes memory);
+/**
+ * @title : ENS Off-chain Records Manager
+ * @author : freetib.eth, sshmatrix.eth
+ */
+
+interface iERC165 {
+    function supportsInterface(bytes4 interfaceID) external view returns (bool);
 }
 
-interface iOverloadResolver {
-    function addr(bytes32 node, uint256 coinType) external view returns(bytes memory);
+interface iENS {
+    function owner(bytes32 node) external view returns (address);
+
+    function resolver(bytes32 node) external view returns (address);
+
+    function ttl(bytes32 node) external view returns (uint64);
+
+    function recordExists(bytes32 node) external view returns (bool);
+    //function isApprovedForAll(address owner, address operator) external view returns (bool);
+}
+
+interface iCCIP {
+    function resolve(bytes memory name, bytes memory data) external view returns (bytes memory);
+
+    function __callback(bytes calldata response, bytes calldata extraData)
+        external
+        view
+        returns (bytes memory result);
+}
+
+interface iIPNS {
+    function setContenthash(bytes32 node, bytes calldata _ch) external view returns (bytes memory);
 }
 
 interface iResolver {
-    function contenthash(bytes32 node) external view returns(bytes memory);
+    function contenthash(bytes32 node) external view returns (bytes memory);
 
-    function addr(bytes32 node) external view returns(address payable);
+    function addr(bytes32 node) external view returns (address payable);
 
-    function pubkey(bytes32 node) external view returns(bytes32 x, bytes32 y);
+    function pubkey(bytes32 node) external view returns (bytes32 x, bytes32 y);
 
-    function text(bytes32 node, string calldata key) external view returns(string memory);
+    function text(bytes32 node, string calldata key) external view returns (string memory value);
 
-    function name(bytes32 node) external view returns(string memory);
+    function name(bytes32 node) external view returns (string memory);
+
+    function ABI(bytes32 node, uint256 contentTypes) external view returns (uint256, bytes memory);
+
+    function interfaceImplementer(bytes32 node, bytes4 interfaceID) external view returns (address);
+
+    function zonehash(bytes32 node) external view returns (bytes memory);
+
+    function dnsRecord(bytes32 node, bytes32 name, uint16 resource) external view returns (bytes memory);
+
+    //function recordVersions(bytes32 node) external view returns (uint64);
+
+    /// @dev : set contenthash
+    function setContenthash(bytes32 node, bytes calldata hash) external;
 }
 
-interface iERC165 {
-    function supportsInterface(bytes4 interfaceID) external view returns(bool);
+interface iOverloadResolver {
+    function addr(bytes32 node, uint256 coinType) external view returns (bytes memory);
 }
 
-contract IPFS2 is iCCIP {
-    /// @dev : Dev/multisig address
-    address payable Dev;
+interface iToken {
+    function ownerOf(uint256 id) external view returns (address);
 
-    /// @dev : root .eth namehash
-    bytes32 public immutable ethNamehash = keccak256(abi.encodePacked(bytes32(0), keccak256("eth")));
+    function transferFrom(address from, address to, uint256 bal) external;
 
-    /// @dev : namehash of ipfs2.eth
+    function safeTransferFrom(address from, address to, uint256 bal) external;
 
-    bytes32 public immutable DomainNamehash =
-        keccak256(
-            abi.encodePacked(
-                keccak256(abi.encodePacked(bytes32(0), keccak256("eth"))),
-                keccak256("ipfs2")
-            )
-        );
+    function isApprovedForAll(address _owner, address _operator) external view returns (bool);
 
-    // @dev default for *.ipfs2.eth
-    // 0 "bafzaajaiaejcapc2xjwjwucvux5beka4jbqyr3mk4k3o6oklhwmbwagrpjfvc424"
-    bytes public DefaultContenthash = hex'e50101720024080112203c5aba6c9b5055a5fa12281c486188ed8ae2b6ef394b3d981b00d17a4b51735c';
-    // @dev home content for ipfs2.eth
-    // 1 "bafzaajaiaejcay3x7z7ftabmy4larbxphcgs5wt2djx32savmfjzoxsehlunabby"
-    bytes public HomeContenthash = hex'e50101720024080112206377fe7e59802cc7160886ef388d2eda7a1a6fbd48156153975e443ae8d00438';
+    event Approval(address indexed _owner, address indexed _approved, uint256 indexed _tokenId);
+    event ApprovalForAll(address indexed _owner, address indexed _operator, bool _approved);
 
-    /// @dev : CCIP lookup https://eips.ethereum.org/EIPS/eip-3668
+    function setApprovalForAll(address _operator, bool _approved) external;
+}
+
+interface iERC173 {
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+    function owner() external view returns (address);
+
+    function transferOwnership(address _newOwner) external;
+}
+
+contract IPFS2ETH is iCCIP, iERC165, iERC173 {
+    address public owner;
+
+    /// @dev : revert on fallback
+    fallback() external payable {
+        revert();
+    }
+
+    bytes11 private immutable suffixCheck = bytes11(abi.encodePacked(uint8(5), "ipfs2", uint8(3), "eth", uint8(0)));
+
+    event ThankYou(address indexed _from, uint256 indexed _value);
+
+    /// @dev : revert on zero receive
+    receive() external payable {
+        if (msg.value == 0) revert();
+        emit ThankYou(msg.sender, msg.value);
+    }
+
+    /// @dev constructor initial setup
+    constructor() {
+        owner = msg.sender;
+    }
+
+    function transferOwnership(address _newOwner) external {
+        require(msg.sender == owner, "Only Owner");
+        emit OwnershipTransferred(owner, _newOwner);
+        owner = _newOwner;
+    }
+
+    /// @dev : ENSIP10 CCIP-read Off-chain Lookup method (https://eips.ethereum.org/EIPS/eip-3668)
     error OffchainLookup(
-        address sender,
-        string[] urls,
-        bytes callData,
-        bytes4 callbackFunction,
-        bytes extraData
+        address _addr, // callback contract
+        string[] _gateways, // CCIP gateway URLs
+        bytes _data, // {data} field; request value for HTTP call
+        bytes4 _callbackFunction, // callback function
+        bytes _extradata // callback extra data
     );
 
-    mapping(bytes4 => string) public funMap; //
-    constructor() {
-        funMap[iResolver.addr.selector] = "addr-60"; // eth address
-        funMap[iResolver.pubkey.selector] = "pubkey";
-        funMap[iResolver.name.selector] = "name";
-        Dev = payable(msg.sender);
+    /**
+     * @dev Interface Selector
+     * @param interfaceID : interface identifier
+     */
+
+    function supportsInterface(bytes4 interfaceID) external pure returns (bool) {
+        return (
+            interfaceID == iCCIP.resolve.selector || interfaceID == type(iERC173).interfaceId
+                || interfaceID == iERC165.supportsInterface.selector
+        );
     }
 
-    function selfD() external{
-        // testnet
-        require(msg.sender == Dev, "Only Dev");
-        selfdestruct(Dev);
-    }
+    bytes public DefaultContenthash =
+        hex"e50101720024080112206377fe7e59802cc7160886ef388d2eda7a1a6fbd48156153975e443ae8d00438";
 
-    function supportsInterface(bytes4 interfaceID) external pure returns(bool) {
-        return (interfaceID == iCCIP.resolve.selector ||
-            interfaceID == iERC165.supportsInterface.selector);
-    }
+    /**
+     * @dev core Resolve function
+     * @param name : ENS name to resolve, DNS encoded
+     * @param data : data encoding specific resolver function
+     * @return : triggers offchain lookup so return value is never used directly
+     */
 
-    function resolve3(bytes memory label) public view returns(bytes memory) {
-        bytes memory _ch = DefaultContenthash;
-        if (
-            label[0] == 0x62 && // starts with "b"
-            label.length > 42 // >42 for IPFS and < 42 for normal subdomain
-        ) {
-            bytes memory cid = decodeCIDv1(label);
-            if (cid[1] == 0x72) {
-                _ch = (bytes.concat(hex'e501', cid));
-            } else if (cid[1] == 0x70) {
-                // IPFS DAG.PB
-                _ch = (bytes.concat(hex'e301', cid));
-            } else if (cid[1] == 0x71) {
-                // IPFS DAG.CBOR, ?IPLD
-                _ch = (bytes.concat(hex'e201', cid));
+    function resolve(bytes calldata name, bytes calldata data) external view returns (bytes memory) {
+        unchecked {
+            bytes memory _contenthash;
+            uint256 len = uint8(bytes1(name[:1])) + 1;
+            if (len < 32) {
+                __lookup(_contenthash);
             }
+            require(bytes4(data[:4]) == iResolver.contenthash.selector, "Only Contehthash Supported");
+            require(bytes11(name[len - 12:]) == suffixCheck, "Only *.IPFS2.ETH");
+            bytes1 b1 = bytes1(name[1:2]);
+            if (b1 == bytes1("b")) {
+                _contenthash = decodeBase32(name[1:len]);
+            } else if (b1 == bytes1("k")) {
+                _contenthash = decodeBase32(name[1:len]);
+            } else {
+                // <bytesX>.bytes16.bytes16.ipfs2.eth.limo
+                if (uint8(name[len]) != uint8(32) || uint8(name[len + 33]) != uint8(32) || len + 77 != name.length) {
+                    revert("Invalid Subdomain Format");
+                }
+                _contenthash =
+                    hexStringToBytes(bytes.concat(name[1:len], name[len + 1:len + 33], name[len + 34:len + 66]));
+            }
+            __lookup(_contenthash);
         }
+    }
+
+    function __lookup(bytes memory _contenthash) private view {
         string[] memory _urls = new string[](2);
         _urls[0] = 'data:text/plain,{"data":"{data}"}';
         _urls[1] = 'data:application/json,{"data":"{data}"}';
         revert OffchainLookup(
-            address(this), // callback contract
-            _urls, // gateway URL array
-            _ch, // {data} field
-            IPFS2.__contenthash.selector, // callback function
-            abi.encode( // extradata
-                block.number, // checkpoint
+            address(this),
+            _urls,
+            abi.encode(_contenthash),
+            IPFS2ETH.__callback.selector,
+            abi.encode(
+                block.number - 1,
                 keccak256(
-                    abi.encodePacked(
-                        blockhash(block.number - 1),
-                        address(this),
-                        msg.sender,
-                        _ch
-                    )
+                    abi.encodePacked(blockhash(block.number - 1), address(this), msg.sender, abi.encode(_contenthash))
                 )
             )
         );
     }
 
-    // contenthash callback 
-    function __contenthash(bytes calldata response, bytes calldata extraData) external view returns(bytes memory) {
-        (uint _bn, bytes32 _check) = abi.decode(extraData, (uint, bytes32));
+    /**
+     * @dev callback function
+     * @param response : response of HTTP call
+     * @param extradata: extra data from resolve function
+     */
+
+    function __callback(bytes calldata response, bytes calldata extradata)
+        external
+        view
+        returns (bytes memory result)
+    {
+        (uint256 _blocknumber, bytes32 _checkHash) = abi.decode(extradata, (uint256, bytes32));
         require(
-            block.number <= _bn + 1 &&  // timeout in 1 blocks
-            _check == keccak256(abi.encodePacked(blockhash(--_bn), address(this), msg.sender, response)), 
-            "Invalid Checksum"
+            block.number < _blocknumber + 3
+                && _checkHash == keccak256(abi.encodePacked(blockhash(_blocknumber), address(this), msg.sender, response)),
+            "Invalid Checkhash"
         );
-        // ethers js fails with numeric overflow if this is not abi encoded
-        return abi.encode(response);
-    }
-
-
-    //string[3] glist = ["limo", "casa", "link"];
-    function listGate(string memory _prefix, string memory _json) public pure returns(string[] memory _gateways){
-        _gateways = new string[](3);
-        // TODO : make gateway lists to updatable array ?randomize weight.
-        _gateways[0] = string.concat(_prefix, ".limo/.well-known/", _json, ".json?y={data}");
-        _gateways[1] = string.concat(_prefix, ".casa/.well-known/", _json, ".json?y={data}");
-        _gateways[2] = string.concat(_prefix, ".link/.well-known/", _json, ".json?y={data}");
-    }
-
-    function resolve(bytes calldata name, bytes calldata data) external view returns(bytes memory) {
-        uint256 level;
-        uint256 len;
-        bytes[] memory labels = new bytes[](3);
-        //string memory _path;
-        // dns decode
-        for (uint256 i; name[i] > 0x0;) {
-            len = uint8(bytes1(name[i: ++i]));
-            labels[level] = name[i: i += len];
-            //_path = string.concat(string(labels[level]), "/", _path);
-            ++level;
-        }
-        bytes4 fun = bytes4(data[: 4]); // 4 bytes identifier
-        if (fun == iResolver.contenthash.selector) {
-            if (level == 3) 
-                return resolve3(labels[0]);
-
-            return (HomeContenthash);
-        }
-        string memory jsonFile;
-        if (fun == iResolver.text.selector) {
-            jsonFile = abi.decode(data[36: ], (string));
-        } else if (fun == iOverloadResolver.addr.selector) {
-            jsonFile = string.concat(
-                "addr-",
-                uintToNumString(abi.decode(data[36: ], (uint256)))
-            );
-        } else {
-            jsonFile = funMap[fun];
-            require(bytes(jsonFile).length != 0, "Invalid Resolver Function");
-        }
-
-        string memory _prefix;
-        if (level == 3) {
-            _prefix = string.concat(
-                "https://",
-                string(labels[0]),
-                ".",
-                string(labels[1]),
-                ".eth"
-            );
-        } else {
-            _prefix = string.concat("https://", string(labels[0]), ".eth");
-        }
-        revert OffchainLookup(
-            address(this), // callback contract
-            listGate(_prefix, jsonFile), // gateway URL array
-            "", // {data} field, blank//recheck
-            IPFS2.__callback.selector, // callback function
-            abi.encode( // extradata
-                block.number, // checkpoint
-                keccak256(data), // namehash + calldata
-                keccak256(
-                    abi.encodePacked(
-                        blockhash(block.number - 1),
-                        address(this),
-                        msg.sender,
-                        keccak256(data)
-                    )
-                )
-            )
-        );
-    }
-
-    // basic callback 
-    function __callback(bytes calldata response, bytes calldata extraData) external view returns(bytes memory) {
-        (uint _bn, bytes32 _dh, bytes32 _check) = abi.decode(extraData, (uint, bytes32, bytes32));
-        require(
-            block.number <= _bn + 3 &&  // timeout in 3 blocks, + 3 * ~13 seconds, check >ipfs gateway timeout
-            _check == keccak256(abi.encodePacked(blockhash(--_bn), address(this), msg.sender, _dh)), 
-            "Invalid Checksum"
-        );
-        // "data": from json must be abi encoded properly
         return response;
     }
 
-    function uintToNumString(uint256 value) public pure returns(string memory) {
-        if (value == 0) return "0";
-        uint256 temp = value;
-        uint256 digits;
+    // @dev : decoder functions
+    // @notice : decoders won't revert for bad char in input, GI-GO
+
+    function hexStringToBytes(bytes memory input) public pure returns (bytes memory output) {
+        require(input.length % 2 == 0, "BAD_LENGTH");
+        uint8 a;
+        uint8 b;
+        uint8 c;
         unchecked {
-            while (temp != 0) {
-                ++digits;
-                temp /= 10;
+            uint256 len = input.length / 2;
+            output = new bytes(len);
+            while (c < len) {
+                b = uint8(input[2 * c]) - 48;
+                a = (b < 10) ? b : b - 39;
+                b = uint8(input[2 * c + 1]) - 48;
+                b = (b < 10) ? b : b - 39;
+                output[c++] = bytes1((a * 16) + b);
             }
-            bytes memory buffer = new bytes(digits);
-            while (value != 0) {
-                buffer[--digits] = bytes1(uint8(48 + (value % 10)));
-                value /= 10;
-            }
-            return string(buffer);
         }
     }
 
-    /// @dev : decode base32 cidv1 to bytes
-    function decodeCIDv1(bytes memory input) public pure returns(bytes memory result) {
+    function decodeBase32(bytes memory input) public pure returns (bytes memory) {
+        require(input[0] == bytes1("b"), "Invalid Base32 Prefix");
         uint256 value;
         uint256 bits;
         uint256 index;
         uint256 len = input.length;
-        uint256 b;
-        uint256 p;
+        uint8 b;
         unchecked {
-            result = new bytes(((len - 1) * 5) / 8);
+            bytes memory output = new bytes(((len - 1) * 5) / 8);
             for (uint256 i = 1; i < len; ++i) {
-                b = uint8(input[i]);
-                if (b >= 0x61 && b <= 0x7a) { // a-z
-                    p = b - 0x61;
-                } else if (b >= 0x32 && b <= 0x37) { // 2-7
-                    p = (b - 0x32) + 26;
-                } else {
-                    revert("Invalid Base32 Character");
-                }
-                value = (value << 5) | p;
+                b = uint8(input[i]) - 97;
+                value = (value << 5) | ((b < 27) ? b : b + 73);
                 bits += 5;
                 if (bits >= 8) {
-                    result[index++] = bytes1(
-                        uint8(value >> (bits -= 8)) & 0xFF
-                    );
+                    output[index++] = bytes1(uint8(value >> (bits -= 8)));
+                }
+            }
+            return format(output);
+        }
+    }
+
+    function decodeBase36(bytes memory input) public pure returns (bytes memory output) {
+        require(input[0] == bytes1("k"), "Invalid Base36 Prefix");
+        uint256 slen = input.length;
+        uint256 carry;
+        uint256 index;
+        uint256 len;
+        uint8 b;
+        unchecked {
+            for (uint256 i = 1; i < slen;) {
+                b = uint8(input[i++]) - 48;
+                carry = b < 10 ? b : b - 39;
+                //require(carry < 36, "Invalid Base36 Char");
+                len = output.length;
+                for (uint256 j = 0; j < len; j++) {
+                    // TODO: Optimize, 500k view gas is too much
+                    index = len - 1 - j;
+                    carry = uint256(uint8(output[index])) * 36 + carry;
+                    output[index] = bytes1(uint8(carry));
+                    carry = carry >> 8;
+                }
+                if (carry > 0) {
+                    output = bytes.concat(bytes1(uint8(carry)), output);
                 }
             }
         }
+        return format(output);
+    }
+
+    function format(bytes memory input) private pure returns (bytes memory) {
+        bytes1 b = input[1];
+        bytes1 prefix;
+        if (b == 0x72) {
+            //IPNS, libp2p-key
+            prefix = 0xe5;
+        } else if (b == 0x70) {
+            //IPFS, dag-pb
+            prefix = 0xe3;
+        } else if (b == 0x71) {
+            // IPLD, dag-cbor
+            prefix = 0xe2;
+        } else {
+            revert("Unsupported Format");
+        }
+        return abi.encodePacked(prefix, uint8(1), input);
     }
 }
