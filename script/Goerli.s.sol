@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Script.sol";
-import "src/Resolver.sol";
+import "src/IPFS2ETH.sol";
 
 contract CCIP2ETHGoerli is Script {
     //iENS public ENS = iENS(0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e);
@@ -11,7 +11,7 @@ contract CCIP2ETHGoerli is Script {
         vm.startBroadcast();
 
         /// @dev : Deploy
-        Resolver resolver = new Resolver();
+        IPFS2ETH resolver = new IPFS2ETH();
 
         /// @dev : Set resolver on testnet name
         //bytes32 namehash =
