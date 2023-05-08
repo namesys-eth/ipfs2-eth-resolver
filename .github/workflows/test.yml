@@ -24,8 +24,7 @@ jobs:
 
       - name: Run Forge build
         run: |
-          forge --version
-          forge init --no-commit --no-git -q
+          forge install foundry-rs/forge-std --no-commit --no-git
           forge build --sizes
         id: build
 
