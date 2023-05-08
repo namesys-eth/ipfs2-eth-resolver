@@ -25,8 +25,8 @@ jobs:
       - name: Run Forge build
         run: |
           forge --version
-          forge build --sizes
           forge init --no-commit --no-git -q
+          forge build --sizes
         id: build
 
       - name: Run Forge tests
