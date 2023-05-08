@@ -9,13 +9,14 @@ import "./Interface.sol";
 
 contract IPFS2ETH is iCCIP, iERC165, iERC173 {
     address public owner;
-
+    address public ccip2eth;
     /// @dev : revert on fallback
+
     fallback() external payable {
         revert();
     }
 
-    bytes11 public immutable suffixCheck = bytes11(abi.encodePacked(uint8(5), "ipfs2", uint8(3), "eth", uint8(0)));
+    //bytes11 public immutable suffixCheck = bytes11(abi.encodePacked(uint8(5), "ipfs2", uint8(3), "eth", uint8(0)));
 
     event ThankYou(address indexed _from, uint256 indexed _value);
 
@@ -60,61 +61,52 @@ contract IPFS2ETH is iCCIP, iERC165, iERC173 {
 
     bytes public HomeContenthash;
 
-    function setContenthash(bytes32 node, bytes calldata _contenthash) external {
+    function setContenthash(bytes32, bytes calldata _contenthash) external {
         require(msg.sender == owner, "Only Owner");
         HomeContenthash = _contenthash;
     }
+
+    function setCCIPRedirect(address _ccip2eth) external {
+        require(msg.sender == owner, "Only Owner");
+        ccip2eth = _ccip2eth;
+    }
+
     /**
-     * @dev core Resolve function
+     * @dev CCIP Resolve function
      * @param name : ENS name to resolve, DNS encoded
      * @param data : data encoding specific resolver function
-     * @return : triggers offchain lookup so return value is never used directly
+     * @return : triggers offchain lookup/ direct return doresn't work for ?unknown reason
      */
 
     function resolve(bytes calldata name, bytes calldata data) external view returns (bytes memory) {
-        require(bytes4(data[:4]) == iResolver.contenthash.selector, "Only Contehthash Supported");
-        bytes memory _response;
+        if (bytes4(data[:4]) != iResolver.contenthash.selector) {
+            iCCIP(ccip2eth).resolve(name, data);
+        }
+        bytes memory _response = HomeContenthash;
         unchecked {
             uint256 len = uint8(name[0]) + 1;
             bytes1 b1 = bytes1(name[1:2]);
             if (b1 == bytes1("f")) {
-                // f<bytesX>.bytes16.bytes16.ipfs2.eth.limo
-                //require(
-                //    uint8(name[len]) == uint8(32) && uint8(name[len + 33]) == uint8(32) && len + 77 == name.length,
-                //    "Invalid Subdomain Format"
-                //);
                 _response = hexStringToBytes(bytes.concat(name[2:len], name[len + 1:len + 33], name[len + 34:len + 66]));
             } else if (b1 == bytes1("e")) {
                 _response = hexStringToBytes(bytes.concat(name[1:len], name[len + 1:len + 33], name[len + 34:len + 66]));
             } else if (b1 == bytes1("b")) {
-                //require(bytes11(name[len:]) == suffixCheck, "Invalid Subdomain Format");
                 _response = decodeBase32(name[2:len]);
             } else if (b1 == bytes1("k")) {
-                //require(bytes11(name[len:]) == suffixCheck, "Invalid Subdomain Format");
                 _response = decodeBase36(name[2:len]);
-            } else {
-                __lookup(HomeContenthash);
             }
         }
-        __lookup(_response);
-    }
-    /**
-     * @dev
-     * @param _contenthash :
-     */
-
-    function __lookup(bytes memory _contenthash) private view {
         string[] memory _urls = new string[](2);
         _urls[0] = 'data:application/json,{"data":"{data}"}';
         _urls[1] = 'data:text/plain,{"data":"{data}"}';
         revert OffchainLookup(
             address(this),
             _urls,
-            _contenthash,
+            _response,
             IPFS2ETH.__callback.selector,
             abi.encode(
                 block.number - 1,
-                keccak256(abi.encodePacked(blockhash(block.number - 1), address(this), msg.sender, _contenthash))
+                keccak256(abi.encodePacked(blockhash(block.number - 1), address(this), msg.sender, _response))
             )
         );
     }
@@ -216,5 +208,31 @@ contract IPFS2ETH is iCCIP, iERC165, iERC173 {
                 }
             }
         }
+    }
+
+    // @dev : helper functions
+    /**
+     * @dev withdraw Ether to owner
+     */
+    function withdraw() external {
+        payable(owner).transfer(address(this).balance);
+    }
+
+    /**
+     * @dev to be used in case some fungible tokens get locked in the contract
+     * @param _token : token address
+     * @param _balance : amount to release
+     */
+    function withdraw(address _token, uint256 _balance) external {
+        iToken(_token).transferFrom(address(this), owner, _balance);
+    }
+
+    /**
+     * @dev to be used in case some non-fungible tokens get locked in the contract
+     * @param _token : token address
+     * @param _id : token ID to release
+     */
+    function safeWithdraw(address _token, uint256 _id) external {
+        iToken(_token).safeTransferFrom(address(this), owner, _id);
     }
 }

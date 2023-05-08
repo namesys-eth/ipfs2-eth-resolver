@@ -23,7 +23,7 @@ contract IPFS2Test is Test {
         _test[1] = "eth";
         (bytes32 _namehash, bytes memory _name) = utils.Encode(_test);
         assertEq(_name, bytes.concat(bytes1(uint8(5)), "ipfs2", bytes1(uint8(3)), "eth", bytes1(0)));
-        assertEq(_name, abi.encodePacked(ipfs2eth.suffixCheck()));
+        //assertEq(_name, abi.encodePacked(ipfs2eth.suffixCheck()));
         assertEq(
             _namehash,
             keccak256(abi.encodePacked(keccak256(abi.encodePacked(bytes32(0), keccak256("eth"))), keccak256("ipfs2")))
@@ -180,8 +180,7 @@ contract IPFS2Test is Test {
         );
         ipfs2eth.resolve(_encoded, _request);
         assertEq(
-            abi.encode(abi.encodePacked(_data)),
-            ipfs2eth.__callback(_data, abi.encode(block.number - 1, _checkHash))
+            abi.encode(abi.encodePacked(_data)), ipfs2eth.__callback(_data, abi.encode(block.number - 1, _checkHash))
         );
     }
 }
