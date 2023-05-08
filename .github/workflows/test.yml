@@ -26,9 +26,10 @@ jobs:
         run: |
           forge --version
           forge build --sizes
+          forge init --no-commit --no-git -q
         id: build
 
       - name: Run Forge tests
         run: |
-          forge test -vvv
+          forge forge test --fork-url https://rpc.ankr.com/eth_goerli -vvv --fork-block-number 8897000
         id: test
