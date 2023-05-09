@@ -1,6 +1,6 @@
 name: test
 
-on: workflow_dispatch
+on: [workflow_dispatch, push]
 
 env:
   FOUNDRY_PROFILE: ci
@@ -24,12 +24,11 @@ jobs:
 
       - name: Run Forge build
         run: |
-          forge --version
-          forge init --no-commit --no-git -q
+          forge install foundry-rs/forge-std --no-commit --no-git
           forge build --sizes
         id: build
 
       - name: Run Forge tests
         run: |
-          forge forge test --fork-url https://rpc.ankr.com/eth_goerli -vvv --fork-block-number 8897000
+          forge test --fork-url https://rpc.ankr.com/eth_goerli -vvv --fork-block-number 8897000
         id: test
