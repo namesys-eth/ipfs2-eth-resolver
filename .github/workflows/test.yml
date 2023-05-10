@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: true
 
-    name: Foundry project
+    name: IPFS2 Resolver
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -22,13 +22,56 @@ jobs:
         with:
           version: nightly
 
-      - name: Run Forge build
+      - name: Run Forge Build
         run: |
           forge install foundry-rs/forge-std --no-commit --no-git
           forge build --sizes
         id: build
 
-      - name: Run Forge tests
+      - name: Run Forge Tests
         run: |
           forge test --fork-url https://rpc.ankr.com/eth_goerli -vvv --fork-block-number 8897000
         id: test
+        
+      - name: Create Badge
+        uses: schneegans/dynamic-badges-action@v1.6.0
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: 645156b2698bd776f38636d6dad5ead0
+          filename: badge.json
+          label: Checks
+          message: Status
+          color: orange
+          
+      - name: Find and Replace 1
+        uses: jacobtomlinson/gha-find-replace@v3
+        with:
+          find: "checks"
+          replace: "Status"
+          include: ".github/badge.svg"
+          regex: false
+          
+      - name: Find and Replace 2
+        uses: jacobtomlinson/gha-find-replace@v3
+        with:
+          find: "status"
+          replace: ${{ steps.test.outcome }}
+          include: ".github/badge.svg"
+          regex: false
+          
+      - name: Find and Replace 3
+        uses: jacobtomlinson/gha-find-replace@v3
+        with:
+          find: "3C1"
+          replace: "F73"
+          include: ".github/badge.svg"
+          regex: false
+        if: steps.test.outcome == 'failure'
+          
+      - name: Deploy Badge to Gist
+        uses: exuanbo/actions-deploy-gist@v1
+        with:
+          token: ${{ secrets.GIST_SECRET }}
+          gist_id: 057d4cd05f99586abf22a3cb14f40ff6
+          file_path: .github/badge.svg
+          file_type: text
