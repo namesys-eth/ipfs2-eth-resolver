@@ -32,3 +32,13 @@ jobs:
         run: |
           forge test --fork-url https://rpc.ankr.com/eth_goerli -vvv --fork-block-number 8897000
         id: test
+        
+      - name: Create Badge
+        uses: schneegans/dynamic-badges-action@v1.6.0
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: 645156b2698bd776f38636d6dad5ead0
+          filename: badge.json
+          label: Hello
+          message: World
+          color: orange
