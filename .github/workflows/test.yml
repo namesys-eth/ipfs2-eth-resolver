@@ -47,7 +47,7 @@ jobs:
         uses: jacobtomlinson/gha-find-replace@v3
         with:
           find: "checks"
-          replace: "🧪Test"
+          replace: "Status"
           include: ".github/badge.svg"
           regex: false
           
