@@ -39,12 +39,30 @@ jobs:
           auth: ${{ secrets.GIST_SECRET }}
           gistID: 645156b2698bd776f38636d6dad5ead0
           filename: badge.json
-          label: Why
-          message: Though
+          label: Checks
+          message: Status
           color: orange
           
-      - name: Replace Text in Gist
-        run: |
-          content=$(curl -H "Authorization: token ${{ secrets.GIST_SECRET }}" https://api.github.com/gists/057d4cd05f99586abf22a3cb14f40ff6 | jq -r '.files["badge.svg"].content')
-          new_content=$(echo "$content" | sed 's/checks/tests/g' | sed 's/status/pass/g')
-          curl -H "Authorization: token ${{ secrets.GIST_SECRET }}" --data-binary "{\"files\": {\"badge.svg\": {\"content\": \"$new_content\"}}}" https://api.github.com/gists/057d4cd05f99586abf22a3cb14f40ff6 -X PATCH
+      - name: Find and Replace 1
+        uses: jacobtomlinson/gha-find-replace@v3
+        with:
+          find: "checks"
+          replace: "TESTS"
+          include: ".github/badge.svg"
+          regex: false
+          
+      - name: Find and Replace 2
+        uses: jacobtomlinson/gha-find-replace@v3
+        with:
+          find: "status"
+          replace: "PASSING"
+          include: ".github/badge.svg"
+          regex: false
+          
+      - name: Deploy Badge to Gist
+        uses: exuanbo/actions-deploy-gist@v1
+        with:
+          token: ${{ secrets.GIST_SECRET }}
+          gist_id: 057d4cd05f99586abf22a3cb14f40ff6
+          file_path: .github/badge.svg
+          file_type: text
