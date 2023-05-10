@@ -47,7 +47,7 @@ jobs:
         uses: jacobtomlinson/gha-find-replace@v3
         with:
           find: "checks"
-          replace: "🧪 Test"
+          replace: "🧪Test"
           include: ".github/badge.svg"
           regex: false
           
@@ -66,7 +66,7 @@ jobs:
           replace: "F73"
           include: ".github/badge.svg"
           regex: false
-          if: steps.test.outcome == 'failure'
+        if: steps.test.outcome == 'failure'
           
       - name: Deploy Badge to Gist
         uses: exuanbo/actions-deploy-gist@v1
