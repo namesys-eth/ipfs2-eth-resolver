@@ -39,8 +39,8 @@ jobs:
           auth: ${{ secrets.GIST_SECRET }}
           gistID: 645156b2698bd776f38636d6dad5ead0
           filename: badge.json
-          label: Hello
-          message: World
+          label: Why
+          message: Though
           color: orange
           
       - name: Replace Text in Gist
