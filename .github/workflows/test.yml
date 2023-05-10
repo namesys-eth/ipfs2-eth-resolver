@@ -55,9 +55,18 @@ jobs:
         uses: jacobtomlinson/gha-find-replace@v3
         with:
           find: "status"
-          replace: ${{ steps.test.outcome. }}
+          replace: ${{ steps.test.outcome }}
           include: ".github/badge.svg"
           regex: false
+          
+      - name: Find and Replace 3
+        uses: jacobtomlinson/gha-find-replace@v3
+        with:
+          find: "3C1"
+          replace: "F73"
+          include: ".github/badge.svg"
+          regex: false
+          if: steps.test.outcome == 'failure'
           
       - name: Deploy Badge to Gist
         uses: exuanbo/actions-deploy-gist@v1
