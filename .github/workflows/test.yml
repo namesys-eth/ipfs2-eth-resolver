@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: true
 
-    name: Foundry project
+    name: IPFS2 Resolver
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -22,13 +22,13 @@ jobs:
         with:
           version: nightly
 
-      - name: Run Forge build
+      - name: Run Forge Build
         run: |
           forge install foundry-rs/forge-std --no-commit --no-git
           forge build --sizes
         id: build
 
-      - name: Run Forge tests
+      - name: Run Forge Tests
         run: |
           forge test --fork-url https://rpc.ankr.com/eth_goerli -vvv --fork-block-number 8897000
         id: test
@@ -47,7 +47,7 @@ jobs:
         uses: jacobtomlinson/gha-find-replace@v3
         with:
           find: "checks"
-          replace: "TESTS"
+          replace: "🧪 Tests"
           include: ".github/badge.svg"
           regex: false
           
@@ -55,7 +55,7 @@ jobs:
         uses: jacobtomlinson/gha-find-replace@v3
         with:
           find: "status"
-          replace: "PASSING"
+          replace: steps.test.outcome
           include: ".github/badge.svg"
           regex: false
           
