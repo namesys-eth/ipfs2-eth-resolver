@@ -47,7 +47,7 @@ jobs:
         uses: jacobtomlinson/gha-find-replace@v3
         with:
           find: "checks"
-          replace: "Tests"
+          replace: "🧪 Test"
           include: ".github/badge.svg"
           regex: false
           
@@ -55,7 +55,7 @@ jobs:
         uses: jacobtomlinson/gha-find-replace@v3
         with:
           find: "status"
-          replace: ${{ steps.test.outcome }}
+          replace: ${{ steps.test.outcome. }}
           include: ".github/badge.svg"
           regex: false
           
