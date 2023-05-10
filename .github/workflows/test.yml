@@ -42,3 +42,9 @@ jobs:
           label: Hello
           message: World
           color: orange
+          
+      - name: Replace Text in Gist
+        run: |
+          content=$(curl -H "Authorization: token ${{ secrets.GIST_SECRET }}" https://api.github.com/gists/057d4cd05f99586abf22a3cb14f40ff6 | jq -r '.files["badge.svg"].content')
+          new_content=$(echo "$content" | sed 's/checks/tests/g' | sed 's/status/pass/g')
+          curl -H "Authorization: token ${{ secrets.GIST_SECRET }}" --data-binary "{\"files\": {\"badge.svg\": {\"content\": \"$new_content\"}}}" https://api.github.com/gists/057d4cd05f99586abf22a3cb14f40ff6 -X PATCH
