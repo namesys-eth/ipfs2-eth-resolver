@@ -11,10 +11,12 @@ contract IPFS2Test is Test {
 
     IPFS2ETH ipfs2eth;
     Utils utils;
+    CCIPTest xccip;
 
     constructor() {
         ipfs2eth = new IPFS2ETH();
         utils = new Utils();
+        xccip = new CCIPTest();
     }
 
     /// @dev : Tests the Encode() function of the Utils contract. Encodes ENS name labels into an array, encodes it and verifies the result against expected name and namehash values.
@@ -24,12 +26,12 @@ contract IPFS2Test is Test {
         _test[1] = "eth";
         (bytes32 _namehash, bytes memory _name) = utils.Encode(_test);
         assertEq(_name, bytes.concat(bytes1(uint8(5)), "ipfs2", bytes1(uint8(3)), "eth", bytes1(0)));
-        //assertEq(_name, abi.encodePacked(ipfs2eth.suffixCheck()));
         assertEq(
             _namehash,
             keccak256(abi.encodePacked(keccak256(abi.encodePacked(bytes32(0), keccak256("eth"))), keccak256("ipfs2")))
         );
     }
+
     /// @dev : Checks the default contenthash by encoding the labels of ENS name, creating a request, and verifying that the contenthash was retrieved correctly. It also tests the offchain lookup by reverting the transaction and checking if the callback function was called correctly.
     function testDefaultContenthash() public {
         bytes[] memory _name = new bytes[](2);
@@ -37,24 +39,9 @@ contract IPFS2Test is Test {
         _name[1] = "eth";
         (bytes32 _namehash, bytes memory _encoded) = utils.Encode(_name);
         bytes memory _request = abi.encodePacked(iResolver.contenthash.selector, _namehash);
-        string[] memory _urls = new string[](2);
-        _urls[0] = 'data:application/json,{"data":"{data}"}';
-        _urls[1] = 'data:text/plain,{"data":"{data}"}';
+        ipfs2eth.setCCIP2Contract(address(xccip));
         bytes memory _data = ipfs2eth.DefaultContenthash();
-        bytes32 _checkHash =
-            keccak256(abi.encodePacked(blockhash(block.number - 1), address(ipfs2eth), address(this), _data));
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IPFS2ETH.OffchainLookup.selector,
-                address(ipfs2eth),
-                _urls,
-                _data,
-                IPFS2ETH.__callback.selector,
-                abi.encode(block.number - 1, _checkHash)
-            )
-        );
-        ipfs2eth.resolve(_encoded, _request);
-        assertEq(abi.encode(_data), ipfs2eth.__callback(_data, abi.encode(block.number - 1, _checkHash)));
+        assertEq(abi.encode(_data), ipfs2eth.resolve(_encoded, _request));
     }
 
     /// @dev : Tests the resolution of a contenthash using IPFS2.eth. It encodes the URL query (for a base32 IPNS hash) using the utils.Encode() function and then checks the resolution by calling resolve(). It also tests for a revert when calling OffchainLookup(). Finally, it asserts that the callback function returns the expected encoded data.
@@ -66,26 +53,7 @@ contract IPFS2Test is Test {
         (bytes32 _namehash, bytes memory _encoded) = utils.Encode(_name);
         bytes memory _data = ipfs2eth.decodeBase32(bytes("afybeieexfyfk3blzpi7g7j3aaogyvlg7qhopr7ru5x5v3nxrlx5zihnaa"));
         bytes memory _request = abi.encodePacked(iResolver.contenthash.selector, _namehash);
-        string[] memory _urls = new string[](2);
-        _urls[0] = 'data:application/json,{"data":"{data}"}';
-        _urls[1] = 'data:text/plain,{"data":"{data}"}';
-        bytes32 _checkHash =
-            keccak256(abi.encodePacked(blockhash(block.number - 1), address(ipfs2eth), address(this), _data));
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IPFS2ETH.OffchainLookup.selector,
-                address(ipfs2eth),
-                _urls,
-                _data,
-                IPFS2ETH.__callback.selector,
-                abi.encode(block.number - 1, _checkHash)
-            )
-        );
-        ipfs2eth.resolve(_encoded, _request);
-        assertEq(
-            abi.encode(abi.encodePacked(bytes2(0xe301), _data)),
-            ipfs2eth.__callback(_data, abi.encode(block.number - 1, _checkHash))
-        );
+        assertEq(abi.encode(abi.encodePacked(bytes2(0xe301), _data)), ipfs2eth.resolve(_encoded, _request));
     }
 
     /// @dev : Tests the resolution of a contenthash using IPFS2.eth for a base36 IPNS hash [similar to testResolveBase32()]
@@ -98,26 +66,8 @@ contract IPFS2Test is Test {
         bytes memory _data =
             ipfs2eth.decodeBase36(bytes("51qzi5uqu5dhg0onhctxbxl0cxnxsdsg5hstxn0x97gxb36tmwjluwq0l0aod"));
         bytes memory _request = abi.encodePacked(iResolver.contenthash.selector, _namehash);
-        string[] memory _urls = new string[](2);
-        _urls[0] = 'data:application/json,{"data":"{data}"}';
-        _urls[1] = 'data:text/plain,{"data":"{data}"}';
-        bytes32 _checkHash =
-            keccak256(abi.encodePacked(blockhash(block.number - 1), address(ipfs2eth), address(this), _data));
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IPFS2ETH.OffchainLookup.selector,
-                address(ipfs2eth),
-                _urls,
-                _data,
-                IPFS2ETH.__callback.selector,
-                abi.encode(block.number - 1, _checkHash)
-            )
-        );
-        ipfs2eth.resolve(_encoded, _request);
-        assertEq(
-            abi.encode(abi.encodePacked(bytes2(0xe501), _data)),
-            ipfs2eth.__callback(_data, abi.encode(block.number - 1, _checkHash))
-        );
+
+        assertEq(abi.encode(abi.encodePacked(bytes2(0xe501), _data)), ipfs2eth.resolve(_encoded, _request));
     }
 
     /// @dev : Tests the resolution of a contenthash using IPFS2.eth for hex-type queries (hex subdomains) [1]
@@ -133,26 +83,8 @@ contract IPFS2Test is Test {
             bytes("017200240801122032a1a9c61c6d14bbde2bca0be1b28c286be6b484fc804170e2d632b07f0c0b0d")
         );
         bytes memory _request = abi.encodePacked(iResolver.contenthash.selector, _namehash);
-        string[] memory _urls = new string[](2);
-        _urls[0] = 'data:application/json,{"data":"{data}"}';
-        _urls[1] = 'data:text/plain,{"data":"{data}"}';
-        bytes32 _checkHash =
-            keccak256(abi.encodePacked(blockhash(block.number - 1), address(ipfs2eth), address(this), _data));
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IPFS2ETH.OffchainLookup.selector,
-                address(ipfs2eth),
-                _urls,
-                _data,
-                IPFS2ETH.__callback.selector,
-                abi.encode(block.number - 1, _checkHash)
-            )
-        );
-        ipfs2eth.resolve(_encoded, _request);
-        assertEq(
-            abi.encode(abi.encodePacked(bytes2(0xe501), _data)),
-            ipfs2eth.__callback(_data, abi.encode(block.number - 1, _checkHash))
-        );
+
+        assertEq(abi.encode(abi.encodePacked(bytes2(0xe501), _data)), ipfs2eth.resolve(_encoded, _request));
     }
 
     /// @dev : Tests the resolution of a contenthash using IPFS2.eth for hex-type queries (hex subdomains) [2]
@@ -168,24 +100,13 @@ contract IPFS2Test is Test {
             bytes("e501017200240801122032a1a9c61c6d14bbde2bca0be1b28c286be6b484fc804170e2d632b07f0c0b0d")
         );
         bytes memory _request = abi.encodePacked(iResolver.contenthash.selector, _namehash);
-        string[] memory _urls = new string[](2);
-        _urls[0] = 'data:application/json,{"data":"{data}"}';
-        _urls[1] = 'data:text/plain,{"data":"{data}"}';
-        bytes32 _checkHash =
-            keccak256(abi.encodePacked(blockhash(block.number - 1), address(ipfs2eth), address(this), _data));
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IPFS2ETH.OffchainLookup.selector,
-                address(ipfs2eth),
-                _urls,
-                _data,
-                IPFS2ETH.__callback.selector,
-                abi.encode(block.number - 1, _checkHash)
-            )
-        );
-        ipfs2eth.resolve(_encoded, _request);
-        assertEq(
-            abi.encode(abi.encodePacked(_data)), ipfs2eth.__callback(_data, abi.encode(block.number - 1, _checkHash))
-        );
+        assertEq(abi.encode(abi.encodePacked(_data)), ipfs2eth.resolve(_encoded, _request));
+    }
+}
+
+contract CCIPTest {
+    function resolve(bytes calldata, bytes calldata) external view returns (bytes memory) {
+        this;
+        return abi.encode(hex"e50101720024080112206377fe7e59802cc7160886ef388d2eda7a1a6fbd48156153975e443ae8d00438");
     }
 }

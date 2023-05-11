@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: WTFPL.ETH
-pragma solidity > 0.8.0 <0.9.0;
+pragma solidity >0.8.0 <0.9.0;
 
 import "./Interface.sol";
 
@@ -9,77 +9,30 @@ import "./Interface.sol";
  */
 contract IPFS2ETH is iCCIP, iERC165, iERC173 {
     address public owner;
-    address public ccip2eth;
+    iCCIP public ccip2eth;
+
+    /// @dev : Default contenthash for error page
     bytes public DefaultContenthash;
 
-    /// @dev : revert on fallback
+    bytes11 public immutable nameCheck = bytes11(abi.encodePacked(uint8(5), "ipfs2", uint8(3), "eth", uint8(0)));
+
+    /// @dev : Revert on fallback
     fallback() external payable {
         revert();
     }
 
-    //bytes11 public immutable suffixCheck = bytes11(abi.encodePacked(uint8(5), "ipfs2", uint8(3), "eth", uint8(0)));
-
     /// Events
     event ThankYou(address indexed _from, uint256 indexed _value);
 
-    /// @dev : ENSIP-10 CCIP-read Off-chain Lookup method (https://eips.ethereum.org/EIPS/eip-3668)
-    error OffchainLookup(
-        address _addr, // callback contract
-        string[] _gateways, // CCIP gateway URLs
-        bytes _data, // {data} field; request value for HTTP call
-        bytes4 _callbackFunction, // callback function
-        bytes _extradata // callback extra data
-    );
-
     /// @dev : Accept donations/tips to the contract address
     receive() external payable {
-        if (msg.value == 0) revert(); // revert on zero receive
         emit ThankYou(msg.sender, msg.value);
     }
 
-    /// @dev : Constructor; initial setup
+    /// @dev Constructor; initial setup
     constructor() {
         owner = msg.sender;
         DefaultContenthash = hex"e50101720024080112206377fe7e59802cc7160886ef388d2eda7a1a6fbd48156153975e443ae8d00438";
-    }
-
-    /**
-     * @dev Transfers ownership of current contract
-     * @param _newOwner : new contract owner
-     */
-    function transferOwnership(address _newOwner) external {
-        require(msg.sender == owner, "NOT_AUTHORISED");
-        emit OwnershipTransferred(owner, _newOwner);
-        owner = _newOwner;
-    }
-
-    /**
-     * @dev Interface Selector
-     * @param interfaceID : interface identifier
-     */
-    function supportsInterface(bytes4 interfaceID) external pure returns (bool) {
-        return (
-            interfaceID == iCCIP.resolve.selector || interfaceID == type(iERC173).interfaceId
-                || interfaceID == iERC165.supportsInterface.selector
-        );
-    }
-
-    /**
-     * @dev Sets new default contenthash
-     * @param _contenthash : new value to set as default
-     */
-    function setDefaultContenthash(bytes calldata _contenthash) external {
-        require(msg.sender == owner, "NOT_AUTHORISED");
-        DefaultContenthash = _contenthash;
-    }
-
-    /**
-     * @dev Sets CCIP2 coordinate
-     * @param _ccip2eth : address of CCIP2.eth Resolver
-     */
-    function setCCIPRedirect(address _ccip2eth) external {
-        require(msg.sender == owner, "NOT_AUTHORISED");
-        ccip2eth = _ccip2eth;
     }
 
     /**
@@ -89,55 +42,26 @@ contract IPFS2ETH is iCCIP, iERC165, iERC173 {
      * @return : triggers offchain lookup; direct return doesn't work for unknown reason [?]
      */
     function resolve(bytes calldata name, bytes calldata data) external view returns (bytes memory) {
-        if (bytes4(data[:4]) != iResolver.contenthash.selector) {
+        if (name.length == 11 && bytes11(name) == nameCheck) {
             iCCIP(ccip2eth).resolve(name, data);
+        } else if (bytes4(data[:4]) != iResolver.contenthash.selector) {
+            revert("NOT_SUPPORTED");
         }
         bytes memory _response = DefaultContenthash;
+        bytes1 prefix = bytes1(name[1:2]);
         unchecked {
             uint256 len = uint8(name[0]) + 1;
-            bytes1 byte1 = bytes1(name[1:2]);
-            if (byte1 == bytes1("f")) {
+            if (prefix == bytes1("f")) {
                 _response = hexStringToBytes(bytes.concat(name[2:len], name[len + 1:len + 33], name[len + 34:len + 66]));
-            } else if (byte1 == bytes1("e")) {
-                _response = hexStringToBytes(bytes.concat(name[1:len], name[len + 1:len + 33], name[len + 34:len + 66]));
-            } else if (byte1 == bytes1("b")) {
-                _response = decodeBase32(name[2:len]);
-            } else if (byte1 == bytes1("k")) {
+            } else if (prefix == bytes1("k")) {
                 _response = decodeBase36(name[2:len]);
+            } else if (prefix == bytes1("e")) {
+                _response = hexStringToBytes(bytes.concat(name[1:len], name[len + 1:len + 33], name[len + 34:len + 66]));
+            } else if (prefix == bytes1("b")) {
+                _response = decodeBase32(name[2:len]);
             }
         }
-        string[] memory _urls = new string[](2);
-        _urls[0] = 'data:application/json,{"data":"{data}"}';
-        _urls[1] = 'data:text/plain,{"data":"{data}"}';
-        revert OffchainLookup(
-            address(this),
-            _urls,
-            _response,
-            IPFS2ETH.__callback.selector,
-            abi.encode(
-                block.number - 1,
-                keccak256(abi.encodePacked(blockhash(block.number - 1), address(this), msg.sender, _response))
-            )
-        );
-    }
-
-    /**
-     * @dev __callback() verifies a hash in the extradata and returns a modified response based on its prefix. The function takes in two arguments: a response and extradata, and returns a modified response. The output is based on the prefix of the input response.
-     * @param response : response of HTTP call
-     * @param extradata: extra data from resolve function
-     */
-    function __callback(bytes calldata response, bytes calldata extradata)
-        external
-        view
-        returns (bytes memory result)
-    {
-        (uint256 _blocknumber, bytes32 _checkHash) = abi.decode(extradata, (uint256, bytes32));
-        require(
-            block.number < _blocknumber + 3
-                && _checkHash == keccak256(abi.encodePacked(blockhash(_blocknumber), address(this), msg.sender, response)),
-            "INVALID_HASH"
-        );
-        bytes1 prefix = response[1];
+        prefix = _response[1];
         if (prefix == 0x72) {
             //IPNS, libp2p-key
             prefix = 0xe5;
@@ -148,9 +72,9 @@ contract IPFS2ETH is iCCIP, iERC165, iERC173 {
             //?IPLD, dag-cbor
             prefix = 0xe2;
         } else {
-            return abi.encode(response);
+            return abi.encode(_response);
         }
-        return abi.encode(abi.encodePacked(prefix, uint8(1), response));
+        return abi.encode(abi.encodePacked(prefix, uint8(1), _response));
     }
 
     /// @dev : Decoder functions
@@ -231,7 +155,46 @@ contract IPFS2ETH is iCCIP, iERC165, iERC173 {
         }
     }
 
-    /// @dev : Helper functions
+    // @dev : helper/management functions
+
+    /**
+     * @dev Transfers ownership of current contract
+     * @param _newOwner : new contract owner
+     */
+    function transferOwnership(address _newOwner) external {
+        require(msg.sender == owner, "NOT_AUTHORISED");
+        emit OwnershipTransferred(owner, _newOwner);
+        owner = _newOwner;
+    }
+
+    /**
+     * @dev Interface Selector
+     * @param interfaceID : interface identifier
+     */
+    function supportsInterface(bytes4 interfaceID) external pure returns (bool) {
+        return (
+            interfaceID == iCCIP.resolve.selector || interfaceID == type(iERC173).interfaceId
+                || interfaceID == iERC165.supportsInterface.selector
+        );
+    }
+
+    /**
+     * @dev Sets new default contenthash
+     * @param _contenthash : new value to set as default
+     */
+    function setContenthash(bytes calldata _contenthash) external {
+        require(msg.sender == owner, "NOT_AUTHORISED");
+        DefaultContenthash = _contenthash;
+    }
+
+    /**
+     * @dev Sets CCIP2 coordinate
+     * @param _ccip2eth : address of CCIP2.eth Resolver
+     */
+    function setCCIP2Contract(address _ccip2eth) external {
+        require(msg.sender == owner, "NOT_AUTHORISED");
+        ccip2eth = iCCIP(_ccip2eth);
+    }
 
     /**
      * @dev Withdraw Ether to owner; to be used for tips or in case some Ether gets locked in the contract
