@@ -58,7 +58,9 @@ console.log(contenthash);
 
 ## Contracts
 
-Testnet : [`0x6418fc3db67e3c7a6aeafcb5a6416ccd6b75ef30`](https://goerli.etherscan.io/address/0x6418fc3db67e3c7a6aeafcb5a6416ccd6b75ef30#code)
+Goerli (`v0`) : [`0x6418fc3db67e3c7a6aeafcb5a6416ccd6b75ef30`](https://goerli.etherscan.io/address/0x6418fc3db67e3c7a6aeafcb5a6416ccd6b75ef30#code)
+
+Goerli (`v1`) : [`0x727a19447a2250f2fca60d4e66e629d857bdbd9a`](https://goerli.etherscan.io/address/0x727a19447a2250f2fca60d4e66e629d857bdbd9a#code)
 
 Mainnet : [Code audit in progress](https://github.com/namesys-eth/ipfs2-eth-resolver/blob/main/src/IPFS2.sol)
 
