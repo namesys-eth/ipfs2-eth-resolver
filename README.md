@@ -47,11 +47,6 @@ IPFS2 architecture is as follows:
 
 Resolution of `<CIDv1-base32>.ipfs2.eth` will decode and resolve `<CIDv1-base32>` via CCIP as ABI-encoded contenthash. This functionality supports both IPNS and IPFS (and IPLD) contenthashes in `base32` format.
 
-~~### Resolving ENS Records~~
-
-~~IPFS2.eth doesn't support records management for ipfs/IPNS subdomains, we've no owner records for subs to validate & plaintext records are not good for security reasons..~~
-
-
 #### Using Ethers JS, resolver contract converts ipfs/ipns hash subdomain as contenthash  
 
 ```js
