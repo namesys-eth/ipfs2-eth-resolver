@@ -17,6 +17,7 @@ contract IPFS2Test is Test {
         utils = new Utils();
     }
 
+    /// @dev : Tests the Encode() function of the Utils contract. Encodes ENS name labels into an array, encodes it and verifies the result against expected name and namehash values.
     function testSetup() public {
         bytes[] memory _test = new bytes[](2);
         _test[0] = "ipfs2";
@@ -29,8 +30,8 @@ contract IPFS2Test is Test {
             keccak256(abi.encodePacked(keccak256(abi.encodePacked(bytes32(0), keccak256("eth"))), keccak256("ipfs2")))
         );
     }
-
-    function testHomeContenthash() public {
+    /// @dev : Checks the default contenthash by encoding the labels of ENS name, creating a request, and verifying that the contenthash was retrieved correctly. It also tests the offchain lookup by reverting the transaction and checking if the callback function was called correctly.
+    function testDefaultContenthash() public {
         bytes[] memory _name = new bytes[](2);
         _name[0] = "ipfs2";
         _name[1] = "eth";
@@ -39,7 +40,7 @@ contract IPFS2Test is Test {
         string[] memory _urls = new string[](2);
         _urls[0] = 'data:application/json,{"data":"{data}"}';
         _urls[1] = 'data:text/plain,{"data":"{data}"}';
-        bytes memory _data = ipfs2eth.HomeContenthash();
+        bytes memory _data = ipfs2eth.DefaultContenthash();
         bytes32 _checkHash =
             keccak256(abi.encodePacked(blockhash(block.number - 1), address(ipfs2eth), address(this), _data));
         vm.expectRevert(
@@ -56,6 +57,7 @@ contract IPFS2Test is Test {
         assertEq(abi.encode(_data), ipfs2eth.__callback(_data, abi.encode(block.number - 1, _checkHash)));
     }
 
+    /// @dev : Tests the resolution of a contenthash using IPFS2.eth. It encodes the URL query (for a base32 IPNS hash) using the utils.Encode() function and then checks the resolution by calling resolve(). It also tests for a revert when calling OffchainLookup(). Finally, it asserts that the callback function returns the expected encoded data.
     function testResolveBase32() public {
         bytes[] memory _name = new bytes[](3);
         _name[0] = "bafybeieexfyfk3blzpi7g7j3aaogyvlg7qhopr7ru5x5v3nxrlx5zihnaa";
@@ -86,6 +88,7 @@ contract IPFS2Test is Test {
         );
     }
 
+    /// @dev : Tests the resolution of a contenthash using IPFS2.eth for a base36 IPNS hash [similar to testResolveBase32()]
     function testResolveBase36() public {
         bytes[] memory _name = new bytes[](3);
         _name[0] = "k51qzi5uqu5dhg0onhctxbxl0cxnxsdsg5hstxn0x97gxb36tmwjluwq0l0aod";
@@ -117,7 +120,8 @@ contract IPFS2Test is Test {
         );
     }
 
-    function testResolveHexSubsA() public {
+    /// @dev : Tests the resolution of a contenthash using IPFS2.eth for hex-type queries (hex subdomains) [1]
+    function testResolveHexSubdomains1() public {
         bytes[] memory _name = new bytes[](5);
         _name[0] = "f0172002408011220";
         _name[1] = "32a1a9c61c6d14bbde2bca0be1b28c28";
@@ -151,7 +155,8 @@ contract IPFS2Test is Test {
         );
     }
 
-    function testResolveHexSubsB() public {
+    /// @dev : Tests the resolution of a contenthash using IPFS2.eth for hex-type queries (hex subdomains) [2]
+    function testResolveHexSubdomains2() public {
         bytes[] memory _name = new bytes[](5);
         _name[0] = "e5010172002408011220";
         _name[1] = "32a1a9c61c6d14bbde2bca0be1b28c28";
