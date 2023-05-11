@@ -18,22 +18,22 @@
 
 IPFS2.eth ("IPFS-To-ETH") is a proof-of-concept IPFS gateway-like framework with an ENS CCIP-Read Resolver wrapped in a `base32` and `base36` decoder. IPFS2.eth is capable of resolving IPFS and IPNS (and IPLD) contenthashes as subdomains `*.ipfs2.eth` when queried as ENS subdomain or via public ENS gateway services such as `*.IPFS2.eth.limo`  
 
-## Supported Subdomain Formats :
-### IPFS (base32) : `b<base32>.ipfs2.eth`
+## Supported Subdomain Formats
+### IPFS (base32): `b<base32>.ipfs2.eth`
 > https://bafybeiftyo7xm6ktvsmijtwyzcqavotjybnmsiqfxx3fawxvpr666r6z64.ipfs2.eth.limo
 
-### IPNS (base36) : `k<base36>.ipfs2.eth`
+### IPNS (base36): `k<base36>.ipfs2.eth`
 > https://k51qzi5uqu5dkgt2xdmfcyh6058cl8fa6tfnj06u6vdf510260imor3yak48fv.ipfs2.eth.limo
 
-### IPLD(base32/dag-cbor) : 
-https://bafyreie2nochynilsdmcyqpxid7d2dzdle4dbptvep65kujtg2uywm7jre.ipfs2.eth.limo
-> 
-### IPFS/IPNS (Base16/sub domains) : `f<prefix>.<bytes16>.<bytes16>.ipfs2.eth`
+### IPLD (base32/dag-cbor): 
+> https://bafyreie2nochynilsdmcyqpxid7d2dzdle4dbptvep65kujtg2uywm7jre.ipfs2.eth.limo
+
+### IPFS/IPNS (base16/subdomains): `f<prefix>.<bytes16>.<bytes16>.ipfs2.eth`
 > https://f0172002408011220.32a1a9c61c6d14bbde2bca0be1b28c28.6be6b484fc804170e2d632b07f0c0b0d.ipfs2.eth.limo
 
-### ENS Contenthash (Base16/sub domains) : `<prefix>.<bytes16>.<bytes16>.ipfs2.eth`
+### ENS Contenthash (base16/subdomains): `<prefix>.<bytes16>.<bytes16>.ipfs2.eth`
 
->https://e5010172002408011220.32a1a9c61c6d14bbde2bca0be1b28c28.6be6b484fc804170e2d632b07f0c0b0d.ipfs2.eth.limo
+> https://e5010172002408011220.32a1a9c61c6d14bbde2bca0be1b28c28.6be6b484fc804170e2d632b07f0c0b0d.ipfs2.eth.limo
 
 Several centralised providers offer public gateways for IPFS/IPNS resolution such as `https://dweb.link` and `https://ipfs.io`. IPFS2 is a service similar to these public IPFS gateways but it uses an ENS CCIP-Read Resolver and public ENS gateways (`eth.limo`, `eth.link` etc). IPFS2 uses `eth.limo` as its default CCIP gateway to read specific ENS records and is designed to fallback to secondary gateways.
 
@@ -42,7 +42,6 @@ Several centralised providers offer public gateways for IPFS/IPNS resolution suc
 IPFS2 architecture is as follows:
 
 ![](https://raw.githubusercontent.com/namesys-eth/ipfs2-resources/main/graphics/ipfs2.png)
-
 
 ### Resolve `contenthash`
 
