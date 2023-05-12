@@ -76,7 +76,7 @@ jobs:
           regex: false
         if: steps.test.outcome == 'failure'
           
-      - name: Deploy Badge to Gist
+      - name: Deploy badge to Gists
         uses: exuanbo/actions-deploy-gist@v1
         with:
           token: ${{ secrets.GIST_SECRET }}
