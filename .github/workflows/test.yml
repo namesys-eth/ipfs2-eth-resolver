@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: true
 
-    name: IPFS2 Resolver
+    name: IPFS2.eth Resolver
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -26,18 +26,18 @@ jobs:
         with:
           version: nightly
 
-      - name: Run Forge Build
+      - name: Run Forge build
         run: |
           forge install foundry-rs/forge-std --no-commit --no-git
           forge build --sizes
         id: build
 
-      - name: Run Forge Tests
+      - name: Run Forge tests
         run: |
           forge test --fork-url https://rpc.ankr.com/eth_goerli -vvv --fork-block-number 8897000
         id: test
         
-      - name: Create Badge
+      - name: Create badge
         uses: schneegans/dynamic-badges-action@v1.6.0
         with:
           auth: ${{ secrets.GIST_SECRET }}
@@ -54,19 +54,18 @@ jobs:
           replace: "Status"
           include: ".github/badge.svg"
           regex: false
+      
+      - name: Capitalise test status
+        run: |
+          echo "STATUS=$(echo "${steps.test.outcome,,}" | sed 's/\b./\U&/')" >> ${GITHUB_ENV}
           
-      - name: Set status of test run
-        run: echo "::set-output name=status::${{ steps.test.outcome[0] }}${{ steps.test.outcome[1:] }}"
-        shell: bash
-        env:
-          status: ""
-        id: set_status
-
-      - name: Capitalize first letter of status
-        run: echo "::set-output name=status::${{ env.status^ }}"
-        shell: bash
-        env:
-          status: ${{ steps.set_status.outputs.status }}
+      - name: Set status of Forge tests
+        uses: jacobtomlinson/gha-find-replace@v3
+        with:
+          find: "status"
+          replace: "${STATUS}"
+          include: ".github/badge.svg"
+          regex: false
           
       - name: Set color of outcome
         uses: jacobtomlinson/gha-find-replace@v3
