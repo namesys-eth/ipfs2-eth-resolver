@@ -56,7 +56,8 @@ jobs:
         uses: jacobtomlinson/gha-find-replace@v3
         with:
           find: "status"
-          replace: "${{ env.STATUS }}"
+          #replace: "${{ env.STATUS }}"
+          replace: ${{ (steps.test.outcome == 'success' && 'wagmi 🥳') || 'ngmi ❌' }}
           include: ".github/badge.svg"
           regex: false
           
