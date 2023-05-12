@@ -1,5 +1,5 @@
 # `IPFS2.ETH`
-[![](https://raw.githubusercontent.com/namesys-eth/ipfs2-eth-resolver/badges/.github/badge.svg?v=12345)](https://github.com/namesys-eth/ipfs2-eth-resolver/actions/workflows/test.yml)
+[![](https://raw.githubusercontent.com/namesys-eth/ipfs2-eth-resolver/main/.github/badge.svg?v=12345)](https://github.com/namesys-eth/ipfs2-eth-resolver/actions/workflows/test.yml)
 
 ## [Install Foundry](https://getfoundry.sh/)
 `curl -L https://foundry.paradigm.xyz | bash && source ~/.bashrc && foundryup`
