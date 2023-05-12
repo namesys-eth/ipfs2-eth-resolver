@@ -36,16 +36,6 @@ jobs:
         run: |
           forge test --fork-url https://rpc.ankr.com/eth_goerli -vvv --fork-block-number 8897000
         id: test
-        
-      - name: Create badge
-        uses: schneegans/dynamic-badges-action@v1.6.0
-        with:
-          auth: ${{ secrets.GIST_SECRET }}
-          gistID: 645156b2698bd776f38636d6dad5ead0
-          filename: badge.json
-          label: Checks
-          message: Status
-          color: orange
           
       - name: Set name of badge
         uses: jacobtomlinson/gha-find-replace@v3
@@ -75,11 +65,19 @@ jobs:
           include: ".github/badge.svg"
           regex: false
         if: steps.test.outcome == 'failure'
-          
-      - name: Deploy badge to Gists
-        uses: exuanbo/actions-deploy-gist@v1
+        
+      - name: Commit changes
+        uses: EndBug/add-and-commit@v8
         with:
-          token: ${{ secrets.GIST_SECRET }}
-          gist_id: 057d4cd05f99586abf22a3cb14f40ff6
-          file_path: .github/badge.svg
-          file_type: text
+          author_name: sshmatrix
+          author_email: cryptosauron@protonmail.com
+          message: Update badge.svg
+          add: '.github/badge.svg'
+          
+      - name: Push changes
+        uses: ad-m/github-push-action@v0.6.0
+        with:
+          branch: main
+          force: true
+          github_token: ${{ secrets.TOKEN }}
+          
