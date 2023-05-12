@@ -43,7 +43,7 @@ jobs:
           message: Status
           color: orange
           
-      - name: Find and Replace 1
+      - name: Set name of badge
         uses: jacobtomlinson/gha-find-replace@v3
         with:
           find: "checks"
@@ -51,15 +51,19 @@ jobs:
           include: ".github/badge.svg"
           regex: false
           
-      - name: Find and Replace 2
-        uses: jacobtomlinson/gha-find-replace@v3
+      - name: Capitalize first letter and replace text
+        uses: actions/github-script@v4
         with:
-          find: "status"
-          replace: ${{ steps.test.outcome.charAt(0).toUpperCase() + steps.test.outcome.slice(1) }}
-          include: ".github/badge.svg"
-          regex: false
+          script: |
+            const outcome = '${{ steps.test.outcome }}';
+            const firstLetter = outcome.charAt(0).toUpperCase();
+            const restOfWord = outcome.slice(1);
+            const newOutcome = firstLetter + restOfWord;
+            const content = fs.readFileSync('.github/badge.svg', 'utf8');
+            const newContent = content.replace(/status/g, newOutcome);
+            fs.writeFileSync('.github/badge.svg', newContent);
           
-      - name: Find and Replace 3
+      - name: Set color of outcome
         uses: jacobtomlinson/gha-find-replace@v3
         with:
           find: "3C1"
