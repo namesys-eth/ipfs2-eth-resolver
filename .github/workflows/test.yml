@@ -57,7 +57,7 @@ jobs:
       
       - name: Capitalise test status
         run: |
-          echo "STATUS=$(echo "${steps.test.outcome}")" >> ${GITHUB_ENV}
+          echo "STATUS=$(echo "${{ steps.test.outcome }}")" >> ${GITHUB_ENV}
           
       - name: Set status of Forge tests
         uses: jacobtomlinson/gha-find-replace@v3
