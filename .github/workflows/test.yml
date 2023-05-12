@@ -36,6 +36,9 @@ jobs:
         run: |
           forge test --fork-url https://rpc.ankr.com/eth_goerli -vvv --fork-block-number 8897000
         id: test
+        
+      - name: Initialise status badge
+        run: cp .github/init.svg .github/badge.svg
           
       - name: Set name of badge
         uses: jacobtomlinson/gha-find-replace@v3
