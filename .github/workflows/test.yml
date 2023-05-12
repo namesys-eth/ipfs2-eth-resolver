@@ -57,7 +57,7 @@ jobs:
         with:
           find: "status"
           #replace: "${{ env.STATUS }}"
-          replace: ${{ (steps.test.outcome == 'success' && 'wagmi 🥳') || 'ngmi ❌' }}
+          replace: ${{ (steps.test.outcome == 'success' && 'gmgm 🥳') || 'ngmi ❌' }}
           include: ".github/badge.svg"
           regex: false
           
