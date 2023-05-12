@@ -47,7 +47,7 @@ jobs:
       
       - name: Capitalise test status
         run: |
-          echo "STATUS=$(echo "${{ steps.test.outcome }}")" >> ${GITHUB_ENV}
+          echo "STATUS=$(echo "${{ steps.test.outcome }}," | sed 's/\b./\U&/')" >> ${GITHUB_ENV}
           
       - name: Set status of Forge tests
         uses: jacobtomlinson/gha-find-replace@v3
@@ -66,7 +66,7 @@ jobs:
           regex: false
         if: steps.test.outcome == 'failure'
         
-      - name: Commit changes
+      - name: Commit changes to .github/badge.svg
         uses: EndBug/add-and-commit@v8
         with:
           author_name: sshmatrix
@@ -74,7 +74,7 @@ jobs:
           message: Update badge.svg
           add: '.github/badge.svg'
           
-      - name: Push changes
+      - name: Push changes to .github/badge.svg
         uses: ad-m/github-push-action@v0.6.0
         with:
           branch: main
