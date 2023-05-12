@@ -56,12 +56,17 @@ jobs:
           regex: false
           
       - name: Set status of test run
-        uses: jacobtomlinson/gha-find-replace@v3
-        with:
-          find: "status"
-          replace: ${{ steps.test.outcome }}
-          include: ".github/badge.svg"
-          regex: false
+        run: echo "::set-output name=status::${{ steps.test.outcome[0] }}${{ steps.test.outcome[1:] }}"
+        shell: bash
+        env:
+          status: ""
+        id: set_status
+
+      - name: Capitalize first letter of status
+        run: echo "::set-output name=status::${{ env.status^ }}"
+        shell: bash
+        env:
+          status: ${{ steps.set_status.outputs.status }}
           
       - name: Set color of outcome
         uses: jacobtomlinson/gha-find-replace@v3
