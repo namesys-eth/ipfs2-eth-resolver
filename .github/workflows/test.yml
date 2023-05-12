@@ -55,17 +55,13 @@ jobs:
           include: ".github/badge.svg"
           regex: false
           
-      - name: Capitalize first letter and replace text
-        uses: actions/github-script@v6
+      - name: Set status of test run
+        uses: jacobtomlinson/gha-find-replace@v3
         with:
-          script: |
-            const outcome = '${{ steps.test.outcome }}';
-            const firstLetter = outcome.charAt(0).toUpperCase();
-            const restOfWord = outcome.slice(1);
-            const newOutcome = firstLetter + restOfWord;
-            const content = fs.readFileSync('.github/badge.svg', 'utf8');
-            const newContent = content.replace(/status/g, newOutcome);
-            fs.writeFileSync('.github/badge.svg', newContent);
+          find: "status"
+          replace: ${{ steps.test.outcome }}
+          include: ".github/badge.svg"
+          regex: false
           
       - name: Set color of outcome
         uses: jacobtomlinson/gha-find-replace@v3
