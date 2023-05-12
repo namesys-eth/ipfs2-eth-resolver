@@ -55,7 +55,7 @@ jobs:
         uses: jacobtomlinson/gha-find-replace@v3
         with:
           find: "status"
-          replace: ${{ steps.test.outcome }}
+          replace: ${{ steps.test.outcome.charAt(0).toUpperCase() + steps.test.outcome.slice(1); }}
           include: ".github/badge.svg"
           regex: false
           
