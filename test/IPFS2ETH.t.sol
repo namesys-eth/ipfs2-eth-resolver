@@ -42,6 +42,9 @@ contract IPFS2Test is Test {
         ipfs2eth.setCCIP2Contract(address(xccip));
         bytes memory _data = ipfs2eth.DefaultContenthash();
         assertEq(abi.encode(_data), ipfs2eth.resolve(_encoded, _request));
+        (,bytes memory k) = address(xccip).staticcall(abi.encodeWithSelector(iERC165.supportsInterface.selector, iResolver.contenthash.selector));
+        console.logBytes(k);
+        console.logUint(k.length);
     }
 
     /// @dev : Tests the resolution of a contenthash using IPFS2.eth. It encodes the URL query (for a base32 IPNS hash) using the utils.Encode() function and then checks the resolution by calling resolve(). It also tests for a revert when calling OffchainLookup(). Finally, it asserts that the callback function returns the expected encoded data.
@@ -102,9 +105,75 @@ contract IPFS2Test is Test {
         bytes memory _request = abi.encodePacked(iResolver.contenthash.selector, _namehash);
         assertEq(abi.encode(abi.encodePacked(_data)), ipfs2eth.resolve(_encoded, _request));
     }
+    function testResolveHexOnion2() public {
+        bytes[] memory _name = new bytes[](4);
+        _name[0] = "bc037a716b746c7769";
+        _name[1] = "34666563766f367269";
+        _name[2] = "ipfs2";
+        _name[3] = "eth";
+        (bytes32 _namehash, bytes memory _encoded) = utils.Encode(_name);
+        bytes memory _data = ipfs2eth.hexStringToBytes(
+            bytes("bc037a716b746c776934666563766f367269")
+        );
+        assertEq(hex"bc037a716b746c776934666563766f367269", _data);
+        bytes memory _request = abi.encodePacked(iResolver.contenthash.selector, _namehash);
+        assertEq(abi.encode(abi.encodePacked(_data)), ipfs2eth.resolve(_encoded, _request));
+    }
+
+    function testResolveHexOnion3_4() public {
+        bytes[] memory _name = new bytes[](6);
+        _name[0] = "bd037035336c66353771";
+        _name[1] = "6f7679757677736336786e7270707970";
+        _name[2] = "6c79337674716d376c3670636f626b6d";
+        _name[3] = "797173696f6679657a6e667535757164";
+        _name[4] = "ipfs2";
+        _name[5] = "eth";
+        (bytes32 _namehash, bytes memory _encoded) = utils.Encode(_name);
+        bytes memory _data = ipfs2eth.hexStringToBytes(
+            bytes("bd037035336c663537716f7679757677736336786e72707079706c79337674716d376c3670636f626b6d797173696f6679657a6e667535757164")
+        );
+        assertEq(hex"bd037035336c663537716f7679757677736336786e72707079706c79337674716d376c3670636f626b6d797173696f6679657a6e667535757164", _data);
+        bytes memory _request = abi.encodePacked(iResolver.contenthash.selector, _namehash);
+        assertEq(abi.encode(abi.encodePacked(_data)), ipfs2eth.resolve(_encoded, _request));
+    }
+    function testResolveHexSkylink3() public {
+        bytes[] memory _name = new bytes[](5);
+        _name[0] = "90b2c6050800";
+        _name[1] = "4007fd43b74149b31aacbbf2784e874d";
+        _name[2] = "09b086bed15fd54cacff7120cce95372";
+        _name[3] = "ipfs2";
+        _name[4] = "eth";
+        (bytes32 _namehash, bytes memory _encoded) = utils.Encode(_name);
+        bytes memory _data = ipfs2eth.hexStringToBytes(
+            bytes("90b2c60508004007fd43b74149b31aacbbf2784e874d09b086bed15fd54cacff7120cce95372")
+        );
+        assertEq(hex"90b2c60508004007fd43b74149b31aacbbf2784e874d09b086bed15fd54cacff7120cce95372", _data);
+        bytes memory _request = abi.encodePacked(iResolver.contenthash.selector, _namehash);
+        assertEq(abi.encode(abi.encodePacked(_data)), ipfs2eth.resolve(_encoded, _request));
+    }
+    
+    function testResolveHexArweave3() public {
+        bytes[] memory _name = new bytes[](5);
+        _name[0] = "90b2ca05";
+        _name[1] = "cacdf63edf2e0bb4eb5711dd38b0723a";
+        _name[2] = "ca5f3c4ab62ceeb7c1110740833d4894";
+        _name[3] = "ipfs2";
+        _name[4] = "eth";
+        (bytes32 _namehash, bytes memory _encoded) = utils.Encode(_name);
+        bytes memory _data = ipfs2eth.hexStringToBytes(
+            bytes("90b2ca05cacdf63edf2e0bb4eb5711dd38b0723aca5f3c4ab62ceeb7c1110740833d4894")
+        );
+        assertEq(hex"90b2ca05cacdf63edf2e0bb4eb5711dd38b0723aca5f3c4ab62ceeb7c1110740833d4894", _data);
+        bytes memory _request = abi.encodePacked(iResolver.contenthash.selector, _namehash);
+        assertEq(abi.encode(abi.encodePacked(_data)), ipfs2eth.resolve(_encoded, _request));
+    }
+    // 
 }
 
 contract CCIPTest {
+    function supportsInterface(bytes4 _sig) public pure returns(bool){
+        return _sig == iCCIP.resolve.selector;
+    }
     function resolve(bytes calldata, bytes calldata) external view returns (bytes memory) {
         this;
         return abi.encode(hex"e50101720024080112206377fe7e59802cc7160886ef388d2eda7a1a6fbd48156153975e443ae8d00438");
