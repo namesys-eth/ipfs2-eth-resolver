@@ -51,55 +51,44 @@ contract IPFS2ETH is iCCIP, iERC165, iERC173 {
      * @dev eip2544/eip3668 resolve function, ccip-read
      * @param name - ENS name to resolve, DNS encoded
      * @param data - data encoding specific resolver function
-     * @return result - returns 
+     * @return result - returns
      */
     function resolve(bytes calldata name, bytes calldata data) external view returns (bytes memory result) {
         bytes4 func = bytes4(data[:4]);
-        uint len = name.length;
-        if (len < 42){//(len == 11 && bytes11(name) == nameCheck) {
-            // ipfs2.eth home records
+        uint256 len = name.length;
+        if (len < 42) {
             if (iERC165(ccip2eth).supportsInterface(iCCIP.resolve.selector)) {
                 return iCCIP(ccip2eth).resolve(name, data);
             } else if (iERC165(ccip2eth).supportsInterface(func)) {
                 bool ok;
                 (ok, result) = ccip2eth.staticcall(data);
-                if (!ok || result.length == 0) {
-                    if (func == iResolver.contenthash.selector) {
-                        return abi.encode(DefaultContenthash);
-                    } else {
-                        revert("RECORD_NOT_SET");
-                    }
+                if (ok && result.length > 0) {
+                    return abi.encode(result);
+                } else if (func == iResolver.contenthash.selector) {
+                    return abi.encode(DefaultContenthash);
                 }
-            } else {
-                revert("BAD_RESOLVER");
             }
-            return abi.encode(result);
+            revert("RECORD_NOT_SET");
         } else if (func != iResolver.contenthash.selector) {
             revert("NOT_SUPPORTED");
         }
-        //result = DefaultContenthash;
         bytes1 prefix = bytes1(name[1]);
-        //unchecked {
-            uint256 ptr = uint8(name[0]) + 1;
-            //if (prefix == bytes1("f")) {
-            //    result = hexStringToBytes(bytes.concat(name[2:ptr], name[ptr + 1:ptr + 33], name[ptr + 34:ptr + 66]));
-            //} else 
-            if (prefix == bytes1("k")) {
-                result = decodeBase36(name[2:ptr]);
-            } else if (prefix == bytes1("b") && bytes1(name[2]) == bytes1("a")) { // 
-                result = decodeBase32(name[2:ptr]);
-            } else {
-                uint n = 1; // n-th index 
-                uint p = uint8(bytes1(name[0])); // pointer/length
-                uint l = len - 11; // full length, skip encoded ipfs2.eth
-                result = prefix == bytes1("f") ? name[2:n += p] : name[1:n += p]  ;
-                while(n < l) {
-                    p = uint8(bytes1(name[n:++n]));
-                    result = bytes.concat(result, name[n:n += p]);
-                }
-                result = hexStringToBytes(result);
+        uint256 ptr = uint8(name[0]) + 1;
+        if (prefix == bytes1("k")) {
+            result = decodeBase36(name[2:ptr]);
+        } else if (prefix == bytes1("b") && bytes1(name[2]) == bytes1("a")) {
+            result = decodeBase32(name[2:ptr]);
+        } else {
+            uint256 n = 1; // n-th index
+            ptr = uint8(bytes1(name[0])); // pointer/length
+            uint256 l = len - 11; // full length, skip encoded ipfs2.eth
+            result = prefix == bytes1("f") ? name[2:n += ptr] : name[1:n += ptr];
+            while (n < l) {
+                ptr = uint8(bytes1(name[n:++n]));
+                result = bytes.concat(result, name[n:n += ptr]);
             }
-        //}
+            result = hexStringToBytes(result);
+        }
         prefix = result[1];
         if (prefix == 0x72) {
             //IPNS, libp2p-key

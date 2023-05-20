@@ -1,0 +1,8 @@
+{
+  "name": "ipfs2eth",
+  "version": "1.0.0",
+  "description": "IPFS2.ETH : Web3 IPFS Gateway",
+  "repository": "https://github.com/namesys-eth/ipfs2-eth-resolver",
+  "author": "0xc0de4c0ffee <43116881+0xc0de4c0ffee@users.noreply.github.com>",
+  "license": "MIT"
+}

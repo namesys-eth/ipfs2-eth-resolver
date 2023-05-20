@@ -42,7 +42,9 @@ contract IPFS2Test is Test {
         ipfs2eth.setCCIP2Contract(address(xccip));
         bytes memory _data = ipfs2eth.DefaultContenthash();
         assertEq(abi.encode(_data), ipfs2eth.resolve(_encoded, _request));
-        (,bytes memory k) = address(xccip).staticcall(abi.encodeWithSelector(iERC165.supportsInterface.selector, iResolver.contenthash.selector));
+        (, bytes memory k) = address(xccip).staticcall(
+            abi.encodeWithSelector(iERC165.supportsInterface.selector, iResolver.contenthash.selector)
+        );
         console.logBytes(k);
         console.logUint(k.length);
     }
@@ -105,6 +107,7 @@ contract IPFS2Test is Test {
         bytes memory _request = abi.encodePacked(iResolver.contenthash.selector, _namehash);
         assertEq(abi.encode(abi.encodePacked(_data)), ipfs2eth.resolve(_encoded, _request));
     }
+
     function testResolveHexOnion2() public {
         bytes[] memory _name = new bytes[](4);
         _name[0] = "bc037a716b746c7769";
@@ -112,9 +115,7 @@ contract IPFS2Test is Test {
         _name[2] = "ipfs2";
         _name[3] = "eth";
         (bytes32 _namehash, bytes memory _encoded) = utils.Encode(_name);
-        bytes memory _data = ipfs2eth.hexStringToBytes(
-            bytes("bc037a716b746c776934666563766f367269")
-        );
+        bytes memory _data = ipfs2eth.hexStringToBytes(bytes("bc037a716b746c776934666563766f367269"));
         assertEq(hex"bc037a716b746c776934666563766f367269", _data);
         bytes memory _request = abi.encodePacked(iResolver.contenthash.selector, _namehash);
         assertEq(abi.encode(abi.encodePacked(_data)), ipfs2eth.resolve(_encoded, _request));
@@ -130,12 +131,18 @@ contract IPFS2Test is Test {
         _name[5] = "eth";
         (bytes32 _namehash, bytes memory _encoded) = utils.Encode(_name);
         bytes memory _data = ipfs2eth.hexStringToBytes(
-            bytes("bd037035336c663537716f7679757677736336786e72707079706c79337674716d376c3670636f626b6d797173696f6679657a6e667535757164")
+            bytes(
+                "bd037035336c663537716f7679757677736336786e72707079706c79337674716d376c3670636f626b6d797173696f6679657a6e667535757164"
+            )
         );
-        assertEq(hex"bd037035336c663537716f7679757677736336786e72707079706c79337674716d376c3670636f626b6d797173696f6679657a6e667535757164", _data);
+        assertEq(
+            hex"bd037035336c663537716f7679757677736336786e72707079706c79337674716d376c3670636f626b6d797173696f6679657a6e667535757164",
+            _data
+        );
         bytes memory _request = abi.encodePacked(iResolver.contenthash.selector, _namehash);
         assertEq(abi.encode(abi.encodePacked(_data)), ipfs2eth.resolve(_encoded, _request));
     }
+
     function testResolveHexSkylink3() public {
         bytes[] memory _name = new bytes[](5);
         _name[0] = "90b2c6050800";
@@ -151,7 +158,7 @@ contract IPFS2Test is Test {
         bytes memory _request = abi.encodePacked(iResolver.contenthash.selector, _namehash);
         assertEq(abi.encode(abi.encodePacked(_data)), ipfs2eth.resolve(_encoded, _request));
     }
-    
+
     function testResolveHexArweave3() public {
         bytes[] memory _name = new bytes[](5);
         _name[0] = "90b2ca05";
@@ -160,20 +167,20 @@ contract IPFS2Test is Test {
         _name[3] = "ipfs2";
         _name[4] = "eth";
         (bytes32 _namehash, bytes memory _encoded) = utils.Encode(_name);
-        bytes memory _data = ipfs2eth.hexStringToBytes(
-            bytes("90b2ca05cacdf63edf2e0bb4eb5711dd38b0723aca5f3c4ab62ceeb7c1110740833d4894")
-        );
+        bytes memory _data =
+            ipfs2eth.hexStringToBytes(bytes("90b2ca05cacdf63edf2e0bb4eb5711dd38b0723aca5f3c4ab62ceeb7c1110740833d4894"));
         assertEq(hex"90b2ca05cacdf63edf2e0bb4eb5711dd38b0723aca5f3c4ab62ceeb7c1110740833d4894", _data);
         bytes memory _request = abi.encodePacked(iResolver.contenthash.selector, _namehash);
         assertEq(abi.encode(abi.encodePacked(_data)), ipfs2eth.resolve(_encoded, _request));
     }
-    // 
+    //
 }
 
 contract CCIPTest {
-    function supportsInterface(bytes4 _sig) public pure returns(bool){
-        return _sig == iCCIP.resolve.selector;
+    function supportsInterface(bytes4 _sig) public pure returns (bool) {
+        return _sig == iCCIP.resolve.selector || _sig == iERC165.supportsInterface.selector;
     }
+
     function resolve(bytes calldata, bytes calldata) external view returns (bytes memory) {
         this;
         return abi.encode(hex"e50101720024080112206377fe7e59802cc7160886ef388d2eda7a1a6fbd48156153975e443ae8d00438");
