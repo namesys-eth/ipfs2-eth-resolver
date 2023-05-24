@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: WTFPL.ETH
-pragma solidity ^0.8.15;
+pragma solidity >=0.8.19 <0.9.0;
 
 import "forge-std/Test.sol";
 import "src/IPFS2ETH.sol";
@@ -45,14 +45,9 @@ contract IPFS2Test is Test {
         ipfs2eth.setCCIP2Contract(address(xccip));
         bytes memory _data = ipfs2eth.DefaultContenthash();
         assertEq(abi.encode(_data), ipfs2eth.resolve(_encoded, _request));
-        (, bytes memory k) = address(xccip).staticcall(
-            abi.encodeWithSelector(iERC165.supportsInterface.selector, iResolver.contenthash.selector)
-        );
-        console.logBytes(k);
-        console.logUint(k.length);
     }
 
-    /// @dev : Tests the resolution of a contenthash using IPFS2.eth. It encodes the URL query (for a base32 IPNS hash) using the utils.Encode() function and then checks the resolution by calling resolve(). It also tests for a revert when calling OffchainLookup(). Finally, it asserts that the callback function returns the expected encoded data.
+    /// @dev : Tests the resolution of a contenthash using IPFS2.eth. It encodes the URL query (for a base32 IPFS hash) using the utils.Encode() function and then checks the resolution by calling resolve(). It also tests for a revert when calling OffchainLookup(). Finally, it asserts that the callback function returns the expected encoded data.
     function testResolveBase32() public {
         bytes[] memory _name = new bytes[](3);
         _name[0] = "bafybeieexfyfk3blzpi7g7j3aaogyvlg7qhopr7ru5x5v3nxrlx5zihnaa";
@@ -62,6 +57,19 @@ contract IPFS2Test is Test {
         bytes memory _data = ipfs2eth.decodeBase32(bytes("afybeieexfyfk3blzpi7g7j3aaogyvlg7qhopr7ru5x5v3nxrlx5zihnaa"));
         bytes memory _request = abi.encodePacked(iResolver.contenthash.selector, _namehash);
         assertEq(abi.encode(abi.encodePacked(bytes2(0xe301), _data)), ipfs2eth.resolve(_encoded, _request));
+    }
+
+    /// @dev : Tests the resolution of a ipns contenthash using IPFS2.eth. It encodes the URL query (for a base32 IPNS hash) using the utils.Encode() function and then checks the resolution by calling resolve(). It also tests for a revert when calling OffchainLookup(). Finally, it asserts that the callback function returns the expected encoded data.
+    function testResolveBase32IPNS() public {
+        bytes[] memory _name = new bytes[](4);
+        _name[0] = "bafzaajaiaejcbk7aprbeizayw5c";
+        _name[1] = "kg6uhdrz3dpndlkjbvceytvh35e7zwcoshxzz";
+        _name[2] = "ipfs2";
+        _name[3] = "eth";
+        (bytes32 _namehash, bytes memory _encoded) = utils.Encode(_name);
+        bytes memory _data = ipfs2eth.decodeBase32(bytes("afzaajaiaejcbk7aprbeizayw5ckg6uhdrz3dpndlkjbvceytvh35e7zwcoshxzz"));
+        bytes memory _request = abi.encodePacked(iResolver.contenthash.selector, _namehash);
+        assertEq(abi.encode(abi.encodePacked(bytes2(0xe501), _data)), ipfs2eth.resolve(_encoded, _request));
     }
 
     /// @dev : Tests the resolution of a contenthash using IPFS2.eth for a base36 IPNS hash [similar to testResolveBase32()]
