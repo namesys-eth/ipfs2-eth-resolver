@@ -65,7 +65,8 @@ contract IPFS2ETH is iCCIP, iERC165, iERC173 {
                 if (ok && result.length > 0) {
                     return abi.encode(result);
                 }
-            } else if (func == iResolver.contenthash.selector) {
+            }
+            if (func == iResolver.contenthash.selector) {
                 return abi.encode(DefaultContenthash);
             }
             revert("RECORD_NOT_SET");
