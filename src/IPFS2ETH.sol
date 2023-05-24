@@ -77,7 +77,7 @@ contract IPFS2ETH is iCCIP, iERC165, iERC173 {
         uint256 ptr = uint8(name[0]) + 1;
         if (prefix == bytes1("k")) {
             result = decodeBase36(name[2:ptr]);
-        } else if (prefix == bytes1("b") && bytes1(name[2]) == bytes1("a")) {
+        } else if (bytes2(name[1:3]) == bytes2("ba")) {
             result = decodeBase32(name[2:ptr]);
         } else {
             uint256 n = 1; // n-th index
