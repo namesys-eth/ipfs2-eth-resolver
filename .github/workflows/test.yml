@@ -1,6 +1,6 @@
 name: test
 
-on: workflow_dispatch
+on: [workflow_dispatch, push]
 
 env:
   FOUNDRY_PROFILE: ci
@@ -10,12 +10,16 @@ jobs:
     strategy:
       fail-fast: true
 
-    name: Foundry project
+    name: IPFS2.eth Resolver
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
+          
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '16.x'
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -24,12 +28,60 @@ jobs:
 
       - name: Run Forge build
         run: |
-          forge --version
+          forge install foundry-rs/forge-std --no-commit --no-git
           forge build --sizes
-          forge init --no-commit --no-git -q
         id: build
 
       - name: Run Forge tests
         run: |
-          forge forge test --fork-url https://rpc.ankr.com/eth_goerli -vvv --fork-block-number 8897000
+          forge test --fork-url https://rpc.ankr.com/eth_goerli -vvv --fork-block-number 8897000
         id: test
+        
+      - name: Initialise status badge
+        run: cp .github/init.svg .github/badge.svg
+          
+      - name: Set name of badge
+        uses: jacobtomlinson/gha-find-replace@v3
+        with:
+          find: "checks"
+          replace: "Status"
+          include: ".github/badge.svg"
+          regex: false
+      
+      - name: Capitalise test status
+        run: |
+          echo "STATUS=$(echo "${{ steps.test.outcome }}" | sed 's/\b./\U&/')" >> ${GITHUB_ENV}
+          
+      - name: Set status of Forge tests
+        uses: jacobtomlinson/gha-find-replace@v3
+        with:
+          find: "status"
+          replace: "${{ env.STATUS }}"
+          #replace: ${{ (steps.test.outcome == 'success' && 'Ser! 🥳') || 'Ser? ❌' }}
+          include: ".github/badge.svg"
+          regex: false
+          
+      - name: Set color of outcome
+        uses: jacobtomlinson/gha-find-replace@v3
+        with:
+          find: "3C1"
+          replace: "F73"
+          include: ".github/badge.svg"
+          regex: false
+        if: steps.test.outcome == 'failure'
+        
+      - name: Commit changes to .github/badge.svg
+        uses: EndBug/add-and-commit@v8
+        with:
+          author_name: sshmatrix
+          author_email: cryptosauron@protonmail.com
+          message: auto-commit; render badge.svg
+          add: '.github/badge.svg'
+          
+      - name: Push changes to .github/badge.svg
+        uses: ad-m/github-push-action@v0.6.0
+        with:
+          branch: main
+          force: true
+          github_token: ${{ secrets.TOKEN }}
+          
