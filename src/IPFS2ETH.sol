@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: WTFPL.ETH
-pragma solidity >0.8.0 <0.9.0;
+pragma solidity >0.8.18 <0.9.0;
 
 import "./Interface.sol";
 
@@ -14,6 +14,8 @@ contract IPFS2ETH is iCCIP, iERC165, iERC173 {
 
     /// @dev - Default contenthash for error page
     bytes public DefaultContenthash;
+
+    //bytes11 public immutable nameCheck = bytes11(abi.encodePacked(uint8(5), "ipfs2", uint8(3), "eth", uint8(0)));
 
     /// @dev - Revert on fallback
     fallback() external payable {
@@ -42,7 +44,7 @@ contract IPFS2ETH is iCCIP, iERC165, iERC173 {
     /// @dev Constructor; initial setup
     constructor() {
         owner = msg.sender;
-        DefaultContenthash = hex"e50101720024080112206377fe7e59802cc7160886ef388d2eda7a1a6fbd48156153975e443ae8d00438";
+        DefaultContenthash = hex"e5010172002408011220af515a0a0a94e818e295e9a1b784184d9524c1744efbc20b4a70971c7bbd6b2d";
     }
 
     /**
@@ -52,56 +54,63 @@ contract IPFS2ETH is iCCIP, iERC165, iERC173 {
      * @return result - triggers Off-chain Lookup; return value is stashed
      */
     function resolve(bytes calldata name, bytes calldata data) external view returns (bytes memory result) {
-        bytes4 func = bytes4(data[:4]);
-        uint256 len = name.length;
-        if (len < 42) {
-            if (iERC165(ccip2eth).supportsInterface(iCCIP.resolve.selector)) {
-                return iCCIP(ccip2eth).resolve(name, data);
-            } else if (iERC165(ccip2eth).supportsInterface(func)) {
-                bool ok;
-                (ok, result) = ccip2eth.staticcall(data);
-                if (ok && result.length > 0) {
-                    return abi.encode(result);
+        unchecked {
+            bytes4 func = bytes4(data[:4]);
+            uint256 len = name.length;
+            if (len < 42) {
+                if (iERC165(ccip2eth).supportsInterface(iCCIP.resolve.selector)) {
+                    return iCCIP(ccip2eth).resolve(name, data);
+                } else if (iERC165(ccip2eth).supportsInterface(func)) {
+                    bool ok;
+                    (ok, result) = ccip2eth.staticcall(data);
+                    if (ok && result.length > 0) {
+                        return abi.encode(result);
+                    }
                 }
+                if (func == iResolver.contenthash.selector) {
+                    return abi.encode(DefaultContenthash);
+                }
+                revert("RECORD_NOT_SET");
+            } else if (func != iResolver.contenthash.selector) {
+                revert("NOT_SUPPORTED");
             }
-            if (func == iResolver.contenthash.selector) {
-                return abi.encode(DefaultContenthash);
-            }
-            revert("RECORD_NOT_SET");
-        } else if (func != iResolver.contenthash.selector) {
-            revert("NOT_SUPPORTED");
-        }
-        bytes1 prefix = bytes1(name[1]);
-        uint256 ptr = uint8(name[0]) + 1;
-        if (prefix == bytes1("k")) {
-            result = decodeBase36(name[2:ptr]);
-        } else if (bytes2(name[1:3]) == bytes2("ba")) {
-            result = decodeBase32(name[2:ptr]);
-        } else {
+            bytes1 prefix = bytes1(name[1]);
+            uint256 ptr = uint8(name[0]) + 1;
+
             uint256 n = 1; // n-th index
             ptr = uint8(bytes1(name[0])); // pointer/length
-            uint256 l = len - 11; // full length, skip encoded ipfs2.eth
-            result = prefix == bytes1("f") ? name[2:n += ptr] : name[1:n += ptr];
-            while (n < l) {
+            if (prefix == bytes1("k") || prefix == bytes1("f") || bytes2(name[1:3]) == bytes2("ba")) {
+                result = name[2:n += ptr];
+            } else {
+                result = name[1:n += ptr];
+            }
+            len -= 11; // skip encoded ipfs2.eth
+            while (n < len) {
                 ptr = uint8(bytes1(name[n:++n]));
                 result = bytes.concat(result, name[n:n += ptr]);
             }
-            result = hexStringToBytes(result);
+            if (prefix == bytes1("k")) {
+                result = decodeBase36(result);
+            } else if (bytes2(name[1:3]) == bytes2("ba")) {
+                result = decodeBase32(result);
+            } else {
+                result = hexStringToBytes(result);
+            }
+            prefix = result[1];
+            if (prefix == 0x72) {
+                //IPNS, libp2p-key
+                prefix = 0xe5;
+            } else if (prefix == 0x70 || prefix == 0x55) {
+                //IPFS, dag-pb/raw
+                prefix = 0xe3;
+            } else if (prefix == 0x71) {
+                //?IPLD, dag-cbor only
+                prefix = 0xe2;
+            } else {
+                return abi.encode(result);
+            }
+            return abi.encode(abi.encodePacked(prefix, uint8(1), result));
         }
-        prefix = result[1];
-        if (prefix == 0x72) {
-            //IPNS, libp2p-key
-            prefix = 0xe5;
-        } else if (prefix == 0x70 || prefix == 0x55) {
-            //IPFS, dag-pb/raw
-            prefix = 0xe3;
-        } else if (prefix == 0x71) {
-            //?IPLD, dag-cbor only
-            prefix = 0xe2;
-        } else {
-            return abi.encode(result);
-        }
-        return abi.encode(abi.encodePacked(prefix, uint8(1), result));
     }
 
     /// @dev - Decoder functions
@@ -123,8 +132,7 @@ contract IPFS2ETH is iCCIP, iERC165, iERC173 {
                 b = uint8(input[2 * c]) - 48;
                 a = (b < 10) ? b : b - 39;
                 b = uint8(input[2 * c + 1]) - 48;
-                b = (b < 10) ? b : b - 39;
-                output[c++] = bytes1((a * 16) + b);
+                output[c++] = bytes1((a * 16) + ((b < 10) ? b : b - 39));
             }
         }
     }

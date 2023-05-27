@@ -4,6 +4,5 @@ docs/
 .env
 */.DS_store
 .DS_store
-broadcast/*/*/*
-!broadcast/*/*/run-latest.json
+broadcast
 out/
