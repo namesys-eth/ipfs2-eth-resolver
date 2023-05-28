@@ -15,8 +15,6 @@ contract IPFS2ETH is iCCIP, iERC165, iERC173 {
     /// @dev - Default contenthash for error page
     bytes public DefaultContenthash;
 
-    //bytes11 public immutable nameCheck = bytes11(abi.encodePacked(uint8(5), "ipfs2", uint8(3), "eth", uint8(0)));
-
     /// @dev - Revert on fallback
     fallback() external payable {
         revert("NOT_SUPPORTED");
