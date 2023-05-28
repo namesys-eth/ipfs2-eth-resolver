@@ -188,8 +188,7 @@ contract IPFS2ETH is iCCIP, iERC165, iERC173 {
         }
     }
 
-    // @dev - helper/management functions
-
+    /// @dev - Helper/Management functions
     /**
      * @dev Transfers ownership of current contract
      * @param _newOwner - new contract owner
