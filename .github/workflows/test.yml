@@ -81,7 +81,7 @@ jobs:
       - name: Push changes to .github/badge.svg
         uses: ad-m/github-push-action@v0.6.0
         with:
-          branch: main
+          branch: sshmatrix
           force: true
           github_token: ${{ secrets.TOKEN }}
           
